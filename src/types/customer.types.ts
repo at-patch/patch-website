@@ -14,6 +14,7 @@ export interface Customer {
   email: string;
   phone: string;
   addresses: SavedAddress[];
+  wishlist: string[];
   createdAt: string;
   updatedAt: string;
 }

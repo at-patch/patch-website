@@ -3,8 +3,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { CUSTOMER_SESSION_COOKIE, createCustomerToken } from "@/lib/customer-auth";
 import CustomerModel from "@/lib/models/Customer";
+import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+
+const limiter = makeLimiter("account-register", 5, "10 m");
 
 export async function POST(request: NextRequest) {
+  if (await isRateLimited(limiter, getRequestIp(request))) {
+    return NextResponse.json({ success: false, message: "Too many attempts. Try again later." }, { status: 429 });
+  }
+
   await connectToDatabase();
   const { name, email, phone, password } = await request.json();
 

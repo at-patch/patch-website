@@ -94,7 +94,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <AddToCartButton product={product} />
               )}
             </div>
-            <WishlistButton />
+            <WishlistButton productId={product._id} />
           </div>
 
           <div className="mt-10">
