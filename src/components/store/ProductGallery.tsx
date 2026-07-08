@@ -15,8 +15,12 @@ export function ProductGallery({ images: rawImages, name }: { images: string[]; 
   }
 
   return (
-    <div className="grid grid-cols-[auto_1fr] gap-3 sm:grid-cols-1">
-      <div className="order-2 flex gap-3 overflow-x-auto sm:order-1 sm:flex-row">
+    <div className="flex flex-col gap-3">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-none bg-patch-bg-alt">
+        <Image src={images[active]} alt={name} fill priority className="object-cover" />
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto">
         {images.map((img, i) => (
           <button
             key={img + i}
@@ -29,10 +33,6 @@ export function ProductGallery({ images: rawImages, name }: { images: string[]; 
             <Image src={img} alt={`${name} thumbnail ${i + 1}`} fill className="object-cover" />
           </button>
         ))}
-      </div>
-
-      <div className="relative order-1 aspect-[3/4] overflow-hidden rounded-none bg-patch-bg-alt sm:order-2">
-        <Image src={images[active]} alt={name} fill priority className="object-cover" />
       </div>
     </div>
   );

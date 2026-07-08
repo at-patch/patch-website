@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import { getStripe } from "@/lib/stripe";
+import { releaseOrderStock } from "@/lib/inventory";
 
 export async function POST(request: NextRequest) {
   const { orderId } = await request.json();
@@ -35,6 +36,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { url: session.url } });
   } catch (error) {
+    const result = await OrderModel.updateOne(
+      { _id: order._id, paymentStatus: "pending" },
+      { $set: { paymentStatus: "failed", status: "cancelled" } }
+    );
+    if (result.modifiedCount > 0) {
+      await releaseOrderStock(order);
+    }
+
     const message = error instanceof Error ? error.message : "Failed to start Stripe checkout.";
     return NextResponse.json({ success: false, message }, { status: 502 });
   }
