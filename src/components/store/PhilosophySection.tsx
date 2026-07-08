@@ -1,4 +1,11 @@
 import Link from "next/link";
+import { Leaf, Scissors, Sparkles } from "lucide-react";
+
+const PILLARS = [
+  { icon: Sparkles, label: "Confident", body: "Cuts and color that hold their own." },
+  { icon: Scissors, label: "Crafted", body: "Finished by hand, seam by seam." },
+  { icon: Leaf, label: "Conscious", body: "Fabric sourced with less waste." },
+];
 
 export function PhilosophySection() {
   return (
@@ -15,6 +22,17 @@ export function PhilosophySection() {
         <Link href="/story" className="mt-6 inline-block text-sm font-semibold underline underline-offset-4">
           Read More
         </Link>
+      </div>
+      <div className="mx-auto mt-16 grid max-w-3xl gap-10 px-6 sm:grid-cols-3">
+        {PILLARS.map((pillar) => (
+          <div key={pillar.label} className="flex flex-col items-center gap-3">
+            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-patch-bg/10">
+              <pillar.icon size={24} strokeWidth={1.5} className="text-patch-accent" />
+            </span>
+            <p className="text-sm font-semibold">{pillar.label}</p>
+            <p className="text-xs leading-relaxed text-patch-bg/60">{pillar.body}</p>
+          </div>
+        ))}
       </div>
     </section>
   );

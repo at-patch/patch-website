@@ -1,3 +1,4 @@
+import { Scissors, Sparkles } from "lucide-react";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
 import { HeroSlider } from "@/components/store/HeroSlider";
@@ -38,6 +39,7 @@ export default async function HomePage() {
         body="Bold silhouettes and statement color, styled for how you actually move through your day."
         cta={{ href: "/shop", label: "Shop Now" }}
         accent="accent-2"
+        icon={Sparkles}
       />
       <ProductCarouselSection title="Best Selling" products={bestSelling} />
       <PromoBanner
@@ -46,6 +48,7 @@ export default async function HomePage() {
         body="Small studio team, careful finishing, a little less waste along the way — fashion that's made thoughtfully."
         cta={{ href: "/story", label: "See the Process" }}
         accent="accent-3"
+        icon={Scissors}
         reverse
       />
       <PhilosophySection />
