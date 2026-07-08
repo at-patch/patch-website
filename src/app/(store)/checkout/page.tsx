@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import axiosInstance from "@/lib/axios";
 import { cn, formatPrice } from "@/lib/utils";
-import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { clearCart } from "@/store/slices/cartSlice";
+import { useAppSelector } from "@/store/hooks";
 import type { ApiResponse, Order, PaymentMethod } from "@/types";
 
 const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
@@ -52,7 +51,6 @@ function Section({
 
 export default function CheckoutPage() {
   const lines = useAppSelector((state) => state.cart.lines);
-  const dispatch = useAppDispatch();
   const router = useRouter();
 
   const [openSection, setOpenSection] = useState<1 | 2 | 3>(1);
@@ -88,8 +86,6 @@ export default function CheckoutPage() {
         shippingAddress: form,
         paymentMethod,
       });
-
-      dispatch(clearCart());
 
       if (paymentMethod === "card") {
         const { data: session } = await axiosInstance.post<ApiResponse<{ url: string }>>(

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import { getStripe, markOrderPaidIfPending } from "@/lib/stripe";
+import { ClearCartOnMount } from "@/components/store/ClearCartOnMount";
 import type { Order } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,7 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div className="mx-auto max-w-lg px-6 py-24 text-center">
+      <ClearCartOnMount />
       <h1 className="font-heading text-2xl font-extrabold tracking-tight text-patch-ink">Order placed</h1>
       <p className="mt-3 text-sm text-patch-ink-muted">
         {message}
