@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
+import { releaseOrderStock } from "@/lib/inventory";
 
 let client: Stripe | null = null;
 
@@ -28,8 +29,11 @@ export async function markOrderPaidIfPending(orderId: string) {
 
 export async function markOrderFailed(orderId: string) {
   await connectToDatabase();
-  await OrderModel.updateOne(
+  const order = await OrderModel.findOneAndUpdate(
     { _id: orderId, paymentStatus: "pending" },
-    { $set: { paymentStatus: "failed" } }
+    { $set: { paymentStatus: "failed", status: "cancelled" } }
   );
+  if (order) {
+    await releaseOrderStock(order);
+  }
 }
