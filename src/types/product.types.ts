@@ -1,6 +1,13 @@
 export type ProductCategory = string;
 
 export type ProductStatus = "available" | "reserved" | "sold" | "archived";
+export type ProductRarity = "one-of-one" | "multi-quantity";
+
+export interface ProductVariant {
+  size: string;
+  color: string;
+  quantity: number;
+}
 
 export interface Product {
   _id: string;
@@ -15,9 +22,9 @@ export interface Product {
   category: ProductCategory;
   materials: string[];
   size: string;
-  isOneOfOne: boolean;
+  rarity?: ProductRarity;
+  variants: ProductVariant[];
   batchLabel: string;
-  quantityAvailable: number;
   status: ProductStatus;
   sourceInventoryItem?: string;
   createdAt: string;
@@ -44,8 +51,8 @@ export interface ProductInput {
   category: ProductCategory;
   materials?: string[];
   size?: string;
-  isOneOfOne?: boolean;
+  rarity?: ProductRarity;
+  variants?: ProductVariant[];
   batchLabel?: string;
-  quantityAvailable?: number;
   sourceInventoryItem?: string;
 }

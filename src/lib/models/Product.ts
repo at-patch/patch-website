@@ -1,4 +1,14 @@
 import mongoose, { Schema, type InferSchemaType } from "mongoose";
+import { SIZES } from "@/lib/constants";
+
+const ProductVariantSchema = new Schema(
+  {
+    size: { type: String, enum: SIZES, required: true },
+    color: { type: String, required: true, trim: true },
+    quantity: { type: Number, min: 0, default: 0 },
+  },
+  { _id: false }
+);
 
 const ProductSchema = new Schema(
   {
@@ -17,10 +27,14 @@ const ProductSchema = new Schema(
       trim: true,
     },
     materials: { type: [String], default: [] },
-    size: { type: String, default: "One Size" },
-    isOneOfOne: { type: Boolean, default: true },
+    rarity: {
+      type: String,
+      enum: ["one-of-one", "multi-quantity"],
+      default: "multi-quantity",
+    },
+    size: { type: String, enum: SIZES, default: "M" },
+    variants: { type: [ProductVariantSchema], default: [] },
     batchLabel: { type: String, default: "1-of-1" },
-    quantityAvailable: { type: Number, default: 1, min: 0 },
     status: {
       type: String,
       enum: ["available", "reserved", "sold", "archived"],

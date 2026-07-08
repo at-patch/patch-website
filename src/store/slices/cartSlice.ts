@@ -7,6 +7,8 @@ export interface CartLine {
   name: string;
   price: number;
   image?: string;
+  size: string;
+  color: string;
 }
 
 interface CartState {
@@ -15,23 +17,51 @@ interface CartState {
 
 const initialState: CartState = { lines: [] };
 
+type AddToCartPayload = {
+  product: Product;
+  size: string;
+  color?: string;
+};
+
+type RemoveFromCartPayload = {
+  productId: string;
+  size: string;
+  color?: string;
+};
+
+export function getCartLineKey({
+  productId,
+  size,
+  color,
+}: {
+  productId: string;
+  size: string;
+  color?: string;
+}) {
+  return `${productId}:${size}:${color ?? ""}`;
+}
+
 const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
-    addToCart: (state, action: PayloadAction<Product>) => {
-      const p = action.payload;
-      if (state.lines.some((l) => l.productId === p._id)) return;
+    addToCart: (state, action: PayloadAction<AddToCartPayload>) => {
+      const { product, size, color = "" } = action.payload;
+      const lineKey = getCartLineKey({ productId: product._id, size, color });
+      if (state.lines.some((line) => getCartLineKey(line) === lineKey)) return;
       state.lines.push({
-        productId: p._id,
-        sku: p.sku,
-        name: p.name,
-        price: p.price,
-        image: p.images[0],
+        productId: product._id,
+        sku: product.sku,
+        name: product.name,
+        price: product.price,
+        image: product.images[0],
+        size,
+        color,
       });
     },
-    removeFromCart: (state, action: PayloadAction<string>) => {
-      state.lines = state.lines.filter((l) => l.productId !== action.payload);
+    removeFromCart: (state, action: PayloadAction<RemoveFromCartPayload>) => {
+      const lineKey = getCartLineKey(action.payload);
+      state.lines = state.lines.filter((line) => getCartLineKey(line) !== lineKey);
     },
     clearCart: (state) => {
       state.lines = [];

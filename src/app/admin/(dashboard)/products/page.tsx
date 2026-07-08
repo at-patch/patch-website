@@ -8,7 +8,6 @@ import {
   FileText,
   Hash,
   ImageOff,
-  Layers,
   Link2,
   Package,
   Pencil,
@@ -21,7 +20,8 @@ import {
   Wallet,
 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
-import { formatPrice } from "@/lib/utils";
+import { SIZES } from "@/lib/constants";
+import { formatPrice, getTotalQuantity } from "@/lib/utils";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import {
   Button,
@@ -41,7 +41,14 @@ import {
   tableRowClass,
   type Tone,
 } from "@/components/admin/ui";
-import type { ApiListResponse, Category, Product, ProductCategory, ProductStatus } from "@/types";
+import type {
+  ApiListResponse,
+  Category,
+  Product,
+  ProductCategory,
+  ProductRarity,
+  ProductStatus,
+} from "@/types";
 
 const STATUSES: ProductStatus[] = ["available", "reserved", "sold", "archived"];
 
@@ -52,14 +59,39 @@ const STATUS_TONE: Record<ProductStatus, Tone> = {
   archived: "neutral",
 };
 
-export default function AdminProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({
+type VariantDraft = {
+  size: string;
+  color: string;
+  quantity: string;
+};
+
+type ProductForm = {
+  sku: string;
+  name: string;
+  slug: string;
+  description: string;
+  story: string;
+  images: string[];
+  price: string;
+  category: ProductCategory;
+  materials: string;
+  rarity: ProductRarity;
+  size: string;
+  variants: VariantDraft[];
+};
+
+const DEFAULT_SIZE = SIZES[3];
+
+function createVariantDraft(): VariantDraft {
+  return {
+    size: DEFAULT_SIZE,
+    color: "",
+    quantity: "1",
+  };
+}
+
+function createEmptyForm(category = ""): ProductForm {
+  return {
     sku: "",
     name: "",
     slug: "",
@@ -67,11 +99,85 @@ export default function AdminProductsPage() {
     story: "",
     images: [] as string[],
     price: "",
-    category: "" as ProductCategory,
+    category,
     materials: "",
-    size: "One Size",
-    batchLabel: "1-of-1",
-  });
+    rarity: "multi-quantity" as ProductRarity,
+    size: DEFAULT_SIZE,
+    variants: [createVariantDraft()],
+  };
+}
+
+function VariantEditor({
+  variants,
+  onChange,
+}: {
+  variants: VariantDraft[];
+  onChange: (variants: VariantDraft[]) => void;
+}) {
+  const totalQuantity = variants.reduce((sum, variant) => sum + Math.max(Number(variant.quantity) || 0, 0), 0);
+
+  const updateVariant = (index: number, patch: Partial<VariantDraft>) => {
+    onChange(variants.map((variant, i) => (i === index ? { ...variant, ...patch } : variant)));
+  };
+
+  const removeVariant = (index: number) => {
+    onChange(variants.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div className="sm:col-span-2">
+      <div className="space-y-3">
+        {variants.map((variant, index) => (
+          <div key={`${index}-${variant.size}-${variant.color}`} className="grid gap-3 rounded-2xl border border-patch-line p-4 sm:grid-cols-[1fr_1.2fr_0.8fr_auto]">
+            <FormSelect label="Size" value={variant.size} onChange={(value) => updateVariant(index, { size: value })} icon={Ruler}>
+              {SIZES.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </FormSelect>
+            <FormInput label="Color" value={variant.color} onChange={(value) => updateVariant(index, { color: value })} icon={Shirt} required />
+            <FormInput
+              label="Quantity"
+              type="number"
+              value={variant.quantity}
+              onChange={(value) => updateVariant(index, { quantity: value })}
+              icon={Layers}
+              required
+            />
+            <div className="flex items-end">
+              <IconButton
+                type="button"
+                icon={Trash2}
+                label="Remove variant"
+                tone="danger"
+                onClick={() => removeVariant(index)}
+                disabled={variants.length === 1}
+                className="mb-1"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-patch-ink-muted">Total quantity: {totalQuantity}</p>
+        <Button type="button" variant="outline" onClick={() => onChange([...variants, createVariantDraft()])}>
+          Add size/color
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export default function AdminProductsPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState(() => createEmptyForm());
 
   const load = async () => {
     setLoading(true);
@@ -90,19 +196,31 @@ export default function AdminProductsPage() {
     load();
   }, []);
 
-  const emptyForm = {
-    sku: "", name: "", slug: "", description: "", story: "", images: [] as string[],
-    price: "", category: categories[0]?.slug ?? "", materials: "", size: "One Size", batchLabel: "1-of-1",
-  };
+  const emptyForm = createEmptyForm(categories[0]?.slug ?? "");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    const sanitizedVariants = form.variants
+      .map((variant) => ({
+        size: variant.size,
+        color: variant.color.trim(),
+        quantity: Number(variant.quantity),
+      }))
+      .filter((variant) => variant.color && Number.isFinite(variant.quantity) && variant.quantity >= 0);
+
+    if (form.rarity === "multi-quantity" && sanitizedVariants.length === 0) {
+      setError("Add at least one size/color variant with stock.");
+      return;
+    }
+
     const payload = {
       ...form,
       price: Number(form.price),
       materials: form.materials.split(",").map((s) => s.trim()).filter(Boolean),
+      size: form.rarity === "one-of-one" ? form.size : sanitizedVariants[0]?.size ?? DEFAULT_SIZE,
+      variants: form.rarity === "multi-quantity" ? sanitizedVariants : [],
     };
 
     try {
@@ -121,6 +239,7 @@ export default function AdminProductsPage() {
   };
 
   const startEdit = (p: Product) => {
+    const rarity = p.rarity === "multi-quantity" ? "multi-quantity" : "one-of-one";
     setEditingId(p._id);
     setForm({
       sku: p.sku,
@@ -132,8 +251,16 @@ export default function AdminProductsPage() {
       price: String(p.price),
       category: p.category,
       materials: (p.materials ?? []).join(", "),
-      size: p.size,
-      batchLabel: p.batchLabel,
+      rarity,
+      size: p.size || DEFAULT_SIZE,
+      variants:
+        rarity === "multi-quantity" && p.variants.length > 0
+          ? p.variants.map((variant) => ({
+              size: variant.size,
+              color: variant.color,
+              quantity: String(variant.quantity),
+            }))
+          : [createVariantDraft()],
     });
     setShowForm(true);
   };
@@ -161,9 +288,14 @@ export default function AdminProductsPage() {
       <PageHeader
         icon={Package}
         title="Products / SKUs"
-        description="Manage every one-of-a-kind piece listed in the shop."
+        description="Manage one-of-one pieces and multi-quantity variants listed in the shop."
         action={
-          <Button icon={Plus} onClick={() => setShowForm(true)}>
+          <Button icon={Plus} onClick={() => {
+            setEditingId(null);
+            setForm(createEmptyForm(categories[0]?.slug ?? ""));
+            setError(null);
+            setShowForm(true);
+          }}>
             New product
           </Button>
         }
@@ -174,7 +306,7 @@ export default function AdminProductsPage() {
         onClose={cancelForm}
         icon={Package}
         title={editingId ? "Editing product" : "New product"}
-        description={editingId ? `Updating ${form.name || form.sku}` : "Add a one-of-a-kind piece to the shop"}
+        description={editingId ? `Updating ${form.name || form.sku}` : "Add a one-of-one or multi-quantity product to the shop"}
       >
         <form onSubmit={handleSubmit} className="grid gap-5 sm:grid-cols-2">
           <FormSection title="Identity">
@@ -190,9 +322,25 @@ export default function AdminProductsPage() {
 
           <FormSection title="Pricing & details">
             <FormInput icon={Wallet} label="Price (BDT)" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
-            <FormInput icon={Layers} label="Batch label" value={form.batchLabel} onChange={(v) => setForm({ ...form, batchLabel: v })} />
-            <FormInput icon={Ruler} label="Size" value={form.size} onChange={(v) => setForm({ ...form, size: v })} />
+            <FormSelect icon={Package} label="Product rarity" value={form.rarity} onChange={(v) => setForm({ ...form, rarity: v as ProductRarity })}>
+              <option value="multi-quantity">Multiple quantity</option>
+              <option value="one-of-one">One of a kind (1-of-1)</option>
+            </FormSelect>
             <FormInput icon={Shirt} label="Materials (comma separated)" value={form.materials} onChange={(v) => setForm({ ...form, materials: v })} />
+          </FormSection>
+
+          <FormSection title="Stock">
+            {form.rarity === "one-of-one" ? (
+              <FormSelect icon={Ruler} label="Size" value={form.size} onChange={(v) => setForm({ ...form, size: v })}>
+                {SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </FormSelect>
+            ) : (
+              <VariantEditor variants={form.variants} onChange={(variants) => setForm({ ...form, variants })} />
+            )}
           </FormSection>
 
           <FormSection title="Media">
@@ -237,6 +385,7 @@ export default function AdminProductsPage() {
             <th className={tableCellClass}>Product</th>
             <th className={tableCellClass}>Category</th>
             <th className={tableCellClass}>Price</th>
+            <th className={tableCellClass}>Stock</th>
             <th className={tableCellClass}>Status</th>
             <th className={tableCellClass}></th>
           </tr>
@@ -244,7 +393,7 @@ export default function AdminProductsPage() {
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-20 rounded-lg bg-patch-ink/5" />
@@ -254,7 +403,7 @@ export default function AdminProductsPage() {
             </tr>
           ) : products.length === 0 ? (
             <tr>
-              <td colSpan={5}>
+              <td colSpan={6}>
                 <EmptyState icon={Package} title="No products yet" description="Add your first SKU to start selling." />
               </td>
             </tr>
@@ -277,11 +426,17 @@ export default function AdminProductsPage() {
                       <p className="mt-1 truncate font-mono text-sm text-patch-ink-muted">
                         {p.sku} · {p.slug}
                       </p>
+                      <p className="mt-1 text-xs text-patch-ink-muted">
+                        {p.rarity === "multi-quantity" ? "Multi-quantity" : "1-of-1"}
+                      </p>
                     </div>
                   </div>
                 </td>
                 <td className={`${tableCellClass} capitalize text-patch-ink-muted`}>{p.category}</td>
                 <td className={`${tableCellClass} whitespace-nowrap text-patch-ink`}>{formatPrice(p.price, p.currency)}</td>
+                <td className={`${tableCellClass} whitespace-nowrap text-patch-ink-muted`}>
+                  {p.rarity === "multi-quantity" ? `${getTotalQuantity(p)} in stock` : "1-of-1"}
+                </td>
                 <td className={tableCellClass}>
                   <StatusPillSelect
                     value={p.status}

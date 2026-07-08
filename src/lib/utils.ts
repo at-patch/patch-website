@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Product } from "@/types";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -24,4 +25,12 @@ export function generateOrderNumber() {
   const stamp = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `PATCH-${stamp}-${rand}`;
+}
+
+export function getTotalQuantity(product: Pick<Product, "rarity" | "status" | "variants">) {
+  if (product.rarity !== "multi-quantity") {
+    return product.status === "available" ? 1 : 0;
+  }
+
+  return (product.variants ?? []).reduce((sum, variant) => sum + Math.max(variant.quantity, 0), 0);
 }

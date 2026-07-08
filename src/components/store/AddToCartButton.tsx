@@ -3,14 +3,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addToCart } from "@/store/slices/cartSlice";
+import { addToCart, getCartLineKey } from "@/store/slices/cartSlice";
 import type { Product } from "@/types";
 
 export function AddToCartButton({ product, compact = false }: { product: Product; compact?: boolean }) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const inCart = useAppSelector((state) =>
-    state.cart.lines.some((l) => l.productId === product._id)
+    state.cart.lines.some(
+      (line) =>
+        getCartLineKey(line) ===
+        getCartLineKey({
+          productId: product._id,
+          size: product.size,
+          color: "",
+        })
+    )
   );
   const [justAdded, setJustAdded] = useState(false);
 
@@ -26,7 +34,7 @@ export function AddToCartButton({ product, compact = false }: { product: Product
     <div className="flex gap-3">
       <button
         onClick={() => {
-          dispatch(addToCart(product));
+          dispatch(addToCart({ product, size: product.size, color: "" }));
           setJustAdded(true);
           setTimeout(() => setJustAdded(false), 1500);
         }}

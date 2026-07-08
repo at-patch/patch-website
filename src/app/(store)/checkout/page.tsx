@@ -82,6 +82,8 @@ export default function CheckoutPage() {
           name: l.name,
           price: l.price,
           image: l.image,
+          size: l.size,
+          color: l.color,
         })),
         shippingAddress: form,
         paymentMethod,
@@ -192,8 +194,13 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <div className="divide-y divide-patch-line">
               {lines.map((line) => (
-                <div key={line.productId} className="flex justify-between py-2 text-sm">
-                  <span className="text-patch-ink">{line.name}</span>
+                <div key={`${line.productId}:${line.size}:${line.color}`} className="flex justify-between py-2 text-sm">
+                  <span className="text-patch-ink">
+                    {line.name}{" "}
+                    <span className="text-patch-ink-muted">
+                      ({line.size}{line.color ? ` / ${line.color}` : ""})
+                    </span>
+                  </span>
                   <span className="text-patch-ink-muted">{formatPrice(line.price)}</span>
                 </div>
               ))}

@@ -16,6 +16,8 @@ export interface OrderItem {
   name: string;
   price: number;
   image?: string;
+  size: string;
+  color?: string;
 }
 
 export interface ShippingAddress {

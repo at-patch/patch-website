@@ -2,12 +2,13 @@ import { notFound } from "next/navigation";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
+import { ProductVariantPicker } from "@/components/store/ProductVariantPicker";
 import { ProductGallery } from "@/components/store/ProductGallery";
 import { ProductAccordion } from "@/components/store/ProductAccordion";
 import { WishlistButton } from "@/components/store/WishlistButton";
 import { StickyAddToCartBar } from "@/components/store/StickyAddToCartBar";
 import { ProductCarouselSection } from "@/components/store/ProductCarouselSection";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getTotalQuantity } from "@/lib/utils";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!product) notFound();
 
   const related = await getRelatedProducts(product.category, product._id);
+  const totalQuantity = getTotalQuantity(product);
+  const uniqueSizes = Array.from(new Set((product.variants ?? []).map((variant) => variant.size)));
 
   return (
     <div>
@@ -55,14 +58,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               ? "Sold"
               : product.status === "reserved"
                 ? "Reserved"
-                : "Only 1 available"}
+                : product.rarity === "multi-quantity"
+                  ? totalQuantity > 0
+                    ? `${totalQuantity} available across variants`
+                    : "Out of stock"
+                  : "Only 1 available"}
           </p>
 
           <p className="mt-6 text-sm leading-relaxed text-patch-ink-muted">{product.description}</p>
 
           <div id="add-to-cart" className="mt-8 flex gap-3">
             <div className="flex-1">
-              <AddToCartButton product={product} />
+              {product.rarity === "multi-quantity" ? (
+                <ProductVariantPicker product={product} />
+              ) : (
+                <AddToCartButton product={product} />
+              )}
             </div>
             <WishlistButton />
           </div>
@@ -79,7 +90,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                   body: (
                     <div className="space-y-2">
                       <p>Materials: {product.materials.join(", ") || "—"}</p>
-                      <p>Size: {product.size}</p>
+                      <p>Size: {product.rarity === "multi-quantity" ? uniqueSizes.join(", ") || "—" : product.size}</p>
                       {product.story && <p className="italic">{product.story}</p>}
                       <p>
                         Hand-wash or gentle-cycle cold, air-dry, do not bleach — mixed-fabric panels

@@ -30,7 +30,17 @@ export function StickyAddToCartBar({ product }: { product: Product }) {
             <p className="text-xs text-patch-ink-muted">{formatPrice(product.price, product.currency)}</p>
           </div>
           <div className="w-36 shrink-0">
-            <AddToCartButton product={product} compact />
+            {product.rarity === "multi-quantity" ? (
+              <button
+                type="button"
+                onClick={() => document.getElementById("add-to-cart")?.scrollIntoView({ behavior: "smooth" })}
+                className="w-full rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg"
+              >
+                Select Size
+              </button>
+            ) : (
+              <AddToCartButton product={product} compact />
+            )}
           </div>
         </div>
       )}

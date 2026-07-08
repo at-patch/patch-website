@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { removeFromCart } from "@/store/slices/cartSlice";
+import { getCartLineKey, removeFromCart } from "@/store/slices/cartSlice";
 import { formatPrice, isValidImageSrc } from "@/lib/utils";
 
 export default function CartPage() {
@@ -37,7 +37,7 @@ export default function CartPage() {
       <div className="mt-8 grid gap-10 sm:grid-cols-[1fr_320px]">
         <div className="divide-y divide-patch-line">
           {lines.map((line) => (
-            <div key={line.productId} className="flex items-center gap-4 py-5">
+            <div key={getCartLineKey(line)} className="flex items-center gap-4 py-5">
               <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-none bg-patch-bg-alt">
                 {isValidImageSrc(line.image) && (
                   <Image src={line.image} alt={line.name} fill className="object-cover" />
@@ -46,11 +46,13 @@ export default function CartPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-patch-ink">{line.name}</p>
                 <p className="text-xs text-patch-ink-muted">SKU {line.sku}</p>
-                <p className="mt-1 text-xs text-patch-ink-muted">Qty 1 — one of one</p>
+                <p className="mt-1 text-xs text-patch-ink-muted">
+                  {line.size}{line.color ? ` / ${line.color}` : ""}
+                </p>
               </div>
               <p className="shrink-0 text-sm text-patch-ink">{formatPrice(line.price)}</p>
               <button
-                onClick={() => dispatch(removeFromCart(line.productId))}
+                onClick={() => dispatch(removeFromCart({ productId: line.productId, size: line.size, color: line.color }))}
                 aria-label={`Remove ${line.name}`}
                 className="shrink-0 text-patch-ink-muted hover:text-patch-ink"
               >

@@ -47,10 +47,9 @@ export function PromoBanner({
         />
         {Icon && (
           <Icon
-            className="absolute bottom-6 left-6 opacity-90 sm:bottom-10 sm:left-10"
+            className="absolute bottom-6 left-6 text-white opacity-90 sm:bottom-10 sm:left-10"
             size={56}
             strokeWidth={1.5}
-            color="var(--patch-accent-ink)"
             aria-hidden
           />
         )}

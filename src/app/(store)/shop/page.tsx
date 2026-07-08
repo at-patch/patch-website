@@ -1,4 +1,5 @@
 import { connectToDatabase } from "@/lib/db";
+import { SIZES } from "@/lib/constants";
 import ProductModel from "@/lib/models/Product";
 import CategoryModel from "@/lib/models/Category";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -21,7 +22,15 @@ async function getShopData(searchParams: Record<string, string | undefined>) {
 
   const filter: Record<string, unknown> = { status: "available" };
   if (searchParams.category) filter.category = searchParams.category;
-  if (searchParams.size) filter.size = searchParams.size;
+  if (searchParams.size) {
+    filter.$or = [
+      { rarity: { $ne: "multi-quantity" }, size: searchParams.size },
+      {
+        rarity: "multi-quantity",
+        variants: { $elemMatch: { size: searchParams.size, quantity: { $gt: 0 } } },
+      },
+    ];
+  }
   if (searchParams.search) filter.name = { $regex: searchParams.search, $options: "i" };
   if (searchParams.minPrice || searchParams.maxPrice) {
     filter.price = {
@@ -40,11 +49,20 @@ async function getShopData(searchParams: Record<string, string | undefined>) {
       .limit(PAGE_SIZE)
       .lean(),
     ProductModel.countDocuments(filter),
-    ProductModel.find({ status: "available" }).select("size price").lean(),
+    ProductModel.find({ status: "available" }).select("size variants price rarity").lean(),
     CategoryModel.find({}).sort({ order: 1 }).lean(),
   ]);
 
-  const sizes = Array.from(new Set(allAvailable.map((p) => p.size).filter(Boolean))).sort();
+  const sizes = Array.from(
+    new Set(
+      allAvailable.flatMap((product) => [
+        ...(product.rarity === "multi-quantity" ? [] : product.size ? [product.size] : []),
+        ...((product.variants ?? [])
+          .filter((variant: { quantity: number }) => variant.quantity > 0)
+          .map((variant: { size: string }) => variant.size)),
+      ])
+    )
+  ).sort((a, b) => SIZES.indexOf(a as (typeof SIZES)[number]) - SIZES.indexOf(b as (typeof SIZES)[number]));
   const maxPrice = allAvailable.reduce((max, p) => Math.max(max, p.price), 5000);
 
   return {

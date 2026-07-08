@@ -43,12 +43,12 @@ export function ProductCard({ product }: { product: Product }) {
           {product.batchLabel}
         </span>
 
-        {product.status === "available" && (
+        {product.status === "available" && product.rarity !== "multi-quantity" && (
           <button
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              dispatch(addToCart(product));
+              dispatch(addToCart({ product, size: product.size, color: "" }));
             }}
             aria-label={`Quick add ${product.name} to cart`}
             className="absolute bottom-3 right-3 flex h-9 w-9 translate-y-2 items-center justify-center rounded-full bg-patch-ink text-patch-bg opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
