@@ -8,6 +8,7 @@ import {
   FileText,
   Hash,
   ImageOff,
+  Layers,
   Link2,
   Package,
   Pencil,
