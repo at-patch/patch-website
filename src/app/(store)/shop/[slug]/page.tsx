@@ -8,7 +8,12 @@ import { ProductAccordion } from "@/components/store/ProductAccordion";
 import { WishlistButton } from "@/components/store/WishlistButton";
 import { StickyAddToCartBar } from "@/components/store/StickyAddToCartBar";
 import { ProductCarouselSection } from "@/components/store/ProductCarouselSection";
-import { getSampleProductBySlug, getSampleRelatedProducts, topUpProducts } from "@/lib/sample-catalog";
+import {
+  getSampleProductBySlug,
+  getSampleRelatedProducts,
+  hydrateProductsWithSampleImages,
+  topUpProducts,
+} from "@/lib/sample-catalog";
 import { formatPrice, getTotalQuantity } from "@/lib/utils";
 import type { Product } from "@/types";
 
@@ -18,7 +23,7 @@ async function getProduct(slug: string): Promise<Product | null> {
   try {
     await connectToDatabase();
     const product = await ProductModel.findOne({ slug }).lean();
-    if (product) return JSON.parse(JSON.stringify(product)) as Product;
+    if (product) return hydrateProductsWithSampleImages([JSON.parse(JSON.stringify(product)) as Product])[0];
   } catch {
     // Fall through to sample catalog below.
   }
@@ -36,7 +41,7 @@ async function getRelatedProducts(category: string, excludeId: string): Promise<
     })
       .limit(8)
       .lean();
-    return topUpProducts(JSON.parse(JSON.stringify(related)) as Product[], 8)
+    return hydrateProductsWithSampleImages(topUpProducts(JSON.parse(JSON.stringify(related)) as Product[], 8))
       .filter((product) => product.category === category && product._id !== excludeId)
       .slice(0, 8);
   } catch {

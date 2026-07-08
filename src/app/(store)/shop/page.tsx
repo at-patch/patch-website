@@ -3,7 +3,14 @@ import ProductModel from "@/lib/models/Product";
 import CategoryModel from "@/lib/models/Category";
 import { ProductCard } from "@/components/store/ProductCard";
 import { ShopFilters, ShopSort } from "@/components/store/ShopFilters";
-import { SAMPLE_SIZES, filterSampleProducts, mergeCategoriesWithSamples, sortProducts, topUpProducts } from "@/lib/sample-catalog";
+import {
+  SAMPLE_SIZES,
+  filterSampleProducts,
+  hydrateProductsWithSampleImages,
+  mergeCategoriesWithSamples,
+  sortProducts,
+  topUpProducts,
+} from "@/lib/sample-catalog";
 import type { Category, Product } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -20,14 +27,14 @@ async function getShopData(searchParams: Record<string, string | undefined>) {
       ProductModel.find({ status: "available" }).sort({ createdAt: -1 }).lean(),
       CategoryModel.find({}).sort({ order: 1 }).lean(),
     ]);
-    allAvailable = JSON.parse(JSON.stringify(dbProducts)) as Product[];
+    allAvailable = hydrateProductsWithSampleImages(JSON.parse(JSON.stringify(dbProducts)) as Product[]);
     categories = JSON.parse(JSON.stringify(dbCategories)) as Category[];
   } catch {
     allAvailable = [];
     categories = [];
   }
 
-  const catalog = topUpProducts(allAvailable, 12);
+  const catalog = hydrateProductsWithSampleImages(topUpProducts(allAvailable, 12));
   const filtered = sortProducts(filterSampleProducts(catalog, searchParams), searchParams.sort ?? "newest");
   const page = Math.max(1, Number(searchParams.page ?? "1"));
   const pagedProducts = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);

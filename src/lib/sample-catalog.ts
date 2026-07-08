@@ -1,4 +1,5 @@
 import { SIZES } from "@/lib/constants";
+import { isValidImageSrc } from "@/lib/utils";
 import type { Category, Product } from "@/types";
 
 const now = "2026-07-08T00:00:00.000Z";
@@ -341,6 +342,21 @@ export function topUpProducts(products: Product[], minimum = 12) {
   const existingSlugs = new Set(products.map((product) => product.slug));
   const fillers = SAMPLE_PRODUCTS.filter((product) => !existingSlugs.has(product.slug)).slice(0, minimum - products.length);
   return [...products, ...fillers];
+}
+
+export function hydrateProductsWithSampleImages(products: Product[]) {
+  return products.map((product) => {
+    const validImages = (product.images ?? []).filter(isValidImageSrc);
+    if (validImages.length > 0) return { ...product, images: validImages };
+
+    const sampleBySlug = SAMPLE_PRODUCTS.find((item) => item.slug === product.slug);
+    if (sampleBySlug) {
+      return { ...product, images: sampleBySlug.images };
+    }
+
+    const sampleByCategory = SAMPLE_PRODUCTS.find((item) => item.category === product.category);
+    return sampleByCategory ? { ...product, images: sampleByCategory.images } : product;
+  });
 }
 
 export function getSampleProductBySlug(slug: string) {

@@ -9,7 +9,7 @@ import { PhilosophySection } from "@/components/store/PhilosophySection";
 import { TestimonialCarousel } from "@/components/store/TestimonialCarousel";
 import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
-import { topUpProducts } from "@/lib/sample-catalog";
+import { hydrateProductsWithSampleImages, topUpProducts } from "@/lib/sample-catalog";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -23,12 +23,12 @@ async function getHomeProducts() {
       .sort({ createdAt: -1 })
       .limit(16)
       .lean();
-    list = JSON.parse(JSON.stringify(products)) as Product[];
+    list = hydrateProductsWithSampleImages(JSON.parse(JSON.stringify(products)) as Product[]);
   } catch {
     list = [];
   }
 
-  list = topUpProducts(list, 16);
+  list = hydrateProductsWithSampleImages(topUpProducts(list, 16));
 
   return {
     bestSelling: list.slice(0, 8),
