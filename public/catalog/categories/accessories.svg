@@ -1,0 +1,10 @@
+<svg width="900" height="1200" viewBox="0 0 900 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="1200" fill="#172624"/>
+  <rect x="56" y="56" width="788" height="1088" rx="40" fill="#21403A"/>
+  <rect x="108" y="108" width="684" height="984" rx="28" fill="#EFE4D1"/>
+  <rect x="278" y="355" width="344" height="446" rx="28" fill="#8C6A43"/>
+  <path d="M341 355C341 295.906 388.906 248 448 248H452C511.094 248 559 295.906 559 355V423H521V355C521 316.34 489.66 285 451 285C412.34 285 381 316.34 381 355V423H341V355Z" fill="#D6C2A8"/>
+  <rect x="341" y="483" width="218" height="34" rx="17" fill="#D6C2A8"/>
+  <circle cx="450" cy="640" r="34" fill="#D6C2A8"/>
+  <text x="108" y="1032" fill="#172624" font-family="Arial, sans-serif" font-size="56" font-weight="700" letter-spacing="5">ACCESSORIES</text>
+</svg>

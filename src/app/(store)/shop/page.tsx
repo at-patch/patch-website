@@ -1,78 +1,55 @@
 import { connectToDatabase } from "@/lib/db";
-import { SIZES } from "@/lib/constants";
 import ProductModel from "@/lib/models/Product";
 import CategoryModel from "@/lib/models/Category";
 import { ProductCard } from "@/components/store/ProductCard";
 import { ShopFilters, ShopSort } from "@/components/store/ShopFilters";
+import { SAMPLE_SIZES, filterSampleProducts, mergeCategoriesWithSamples, sortProducts, topUpProducts } from "@/lib/sample-catalog";
 import type { Category, Product } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 const PAGE_SIZE = 12;
 
-const SORT_MAP: Record<string, Record<string, 1 | -1>> = {
-  newest: { createdAt: -1 },
-  popularity: { createdAt: -1 },
-  "price-asc": { price: 1 },
-  "price-desc": { price: -1 },
-};
-
 async function getShopData(searchParams: Record<string, string | undefined>) {
-  await connectToDatabase();
+  let allAvailable: Product[] = [];
+  let categories: Category[] = [];
 
-  const filter: Record<string, unknown> = { status: "available" };
-  if (searchParams.category) filter.category = searchParams.category;
-  if (searchParams.size) {
-    filter.$or = [
-      { rarity: { $ne: "multi-quantity" }, size: searchParams.size },
-      {
-        rarity: "multi-quantity",
-        variants: { $elemMatch: { size: searchParams.size, quantity: { $gt: 0 } } },
-      },
-    ];
-  }
-  if (searchParams.search) filter.name = { $regex: searchParams.search, $options: "i" };
-  if (searchParams.minPrice || searchParams.maxPrice) {
-    filter.price = {
-      ...(searchParams.minPrice ? { $gte: Number(searchParams.minPrice) } : {}),
-      ...(searchParams.maxPrice ? { $lte: Number(searchParams.maxPrice) } : {}),
-    };
+  try {
+    await connectToDatabase();
+    const [dbProducts, dbCategories] = await Promise.all([
+      ProductModel.find({ status: "available" }).sort({ createdAt: -1 }).lean(),
+      CategoryModel.find({}).sort({ order: 1 }).lean(),
+    ]);
+    allAvailable = JSON.parse(JSON.stringify(dbProducts)) as Product[];
+    categories = JSON.parse(JSON.stringify(dbCategories)) as Category[];
+  } catch {
+    allAvailable = [];
+    categories = [];
   }
 
+  const catalog = topUpProducts(allAvailable, 12);
+  const filtered = sortProducts(filterSampleProducts(catalog, searchParams), searchParams.sort ?? "newest");
   const page = Math.max(1, Number(searchParams.page ?? "1"));
-  const sort = SORT_MAP[searchParams.sort ?? "newest"] ?? SORT_MAP.newest;
-
-  const [products, total, allAvailable, categories] = await Promise.all([
-    ProductModel.find(filter)
-      .sort(sort)
-      .skip((page - 1) * PAGE_SIZE)
-      .limit(PAGE_SIZE)
-      .lean(),
-    ProductModel.countDocuments(filter),
-    ProductModel.find({ status: "available" }).select("size variants price rarity").lean(),
-    CategoryModel.find({}).sort({ order: 1 }).lean(),
-  ]);
+  const pagedProducts = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const sizes = Array.from(
     new Set(
-      allAvailable.flatMap((product) => [
+      catalog.flatMap((product) => [
         ...(product.rarity === "multi-quantity" ? [] : product.size ? [product.size] : []),
-        ...((product.variants ?? [])
-          .filter((variant: { quantity: number }) => variant.quantity > 0)
-          .map((variant: { size: string }) => variant.size)),
+        ...product.variants.filter((variant) => variant.quantity > 0).map((variant) => variant.size),
       ])
     )
-  ).sort((a, b) => SIZES.indexOf(a as (typeof SIZES)[number]) - SIZES.indexOf(b as (typeof SIZES)[number]));
-  const maxPrice = allAvailable.reduce((max, p) => Math.max(max, p.price), 5000);
+  ).sort((a, b) => SAMPLE_SIZES.indexOf(a as (typeof SAMPLE_SIZES)[number]) - SAMPLE_SIZES.indexOf(b as (typeof SAMPLE_SIZES)[number]));
+  const maxPrice = catalog.reduce((max, product) => Math.max(max, product.price), 5000);
 
   return {
-    products: JSON.parse(JSON.stringify(products)) as Product[],
-    total,
+    products: pagedProducts,
+    total: filtered.length,
     page,
-    totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    totalPages: Math.max(1, Math.ceil(filtered.length / PAGE_SIZE)),
     sizes,
     maxPrice,
-    categories: JSON.parse(JSON.stringify(categories)) as Category[],
+    categories: mergeCategoriesWithSamples(categories),
   };
 }
 

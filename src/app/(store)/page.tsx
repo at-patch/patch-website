@@ -9,17 +9,27 @@ import { PhilosophySection } from "@/components/store/PhilosophySection";
 import { TestimonialCarousel } from "@/components/store/TestimonialCarousel";
 import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
+import { topUpProducts } from "@/lib/sample-catalog";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 async function getHomeProducts() {
-  await connectToDatabase();
-  const products = await ProductModel.find({ status: "available" })
-    .sort({ createdAt: -1 })
-    .limit(16)
-    .lean();
-  const list: Product[] = JSON.parse(JSON.stringify(products));
+  let list: Product[] = [];
+
+  try {
+    await connectToDatabase();
+    const products = await ProductModel.find({ status: "available" })
+      .sort({ createdAt: -1 })
+      .limit(16)
+      .lean();
+    list = JSON.parse(JSON.stringify(products)) as Product[];
+  } catch {
+    list = [];
+  }
+
+  list = topUpProducts(list, 16);
+
   return {
     bestSelling: list.slice(0, 8),
     newArrivals: list.slice(8, 16).length > 0 ? list.slice(8, 16) : list.slice(0, 8),

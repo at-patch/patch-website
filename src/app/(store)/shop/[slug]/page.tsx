@@ -8,26 +8,40 @@ import { ProductAccordion } from "@/components/store/ProductAccordion";
 import { WishlistButton } from "@/components/store/WishlistButton";
 import { StickyAddToCartBar } from "@/components/store/StickyAddToCartBar";
 import { ProductCarouselSection } from "@/components/store/ProductCarouselSection";
+import { getSampleProductBySlug, getSampleRelatedProducts, topUpProducts } from "@/lib/sample-catalog";
 import { formatPrice, getTotalQuantity } from "@/lib/utils";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 async function getProduct(slug: string): Promise<Product | null> {
-  await connectToDatabase();
-  const product = await ProductModel.findOne({ slug }).lean();
-  return product ? JSON.parse(JSON.stringify(product)) : null;
+  try {
+    await connectToDatabase();
+    const product = await ProductModel.findOne({ slug }).lean();
+    if (product) return JSON.parse(JSON.stringify(product)) as Product;
+  } catch {
+    // Fall through to sample catalog below.
+  }
+
+  return getSampleProductBySlug(slug);
 }
 
 async function getRelatedProducts(category: string, excludeId: string): Promise<Product[]> {
-  const related = await ProductModel.find({
-    category,
-    status: "available",
-    _id: { $ne: excludeId },
-  })
-    .limit(8)
-    .lean();
-  return JSON.parse(JSON.stringify(related));
+  try {
+    await connectToDatabase();
+    const related = await ProductModel.find({
+      category,
+      status: "available",
+      _id: { $ne: excludeId },
+    })
+      .limit(8)
+      .lean();
+    return topUpProducts(JSON.parse(JSON.stringify(related)) as Product[], 8)
+      .filter((product) => product.category === category && product._id !== excludeId)
+      .slice(0, 8);
+  } catch {
+    return getSampleRelatedProducts(category, excludeId);
+  }
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {

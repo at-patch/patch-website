@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { connectToDatabase } from "@/lib/db";
 import CategoryModel from "@/lib/models/Category";
+import { mergeCategoriesWithSamples } from "@/lib/sample-catalog";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
 
@@ -14,19 +15,14 @@ const FALLBACK_COLORS = [
   "var(--patch-bg-alt)",
 ];
 
-const FALLBACK_CATEGORIES: Pick<Category, "_id" | "name" | "slug" | "image">[] = [
-  { _id: "outerwear", name: "Outerwear", slug: "outerwear", image: "" },
-  { _id: "tops", name: "Tops", slug: "tops", image: "" },
-  { _id: "bottoms", name: "Bottoms", slug: "bottoms", image: "" },
-  { _id: "dresses", name: "Dresses", slug: "dresses", image: "" },
-  { _id: "accessories", name: "Accessories", slug: "accessories", image: "" },
-];
-
 async function getCategories() {
-  await connectToDatabase();
-  const categories = await CategoryModel.find({}).sort({ order: 1 }).lean();
-  if (categories.length === 0) return FALLBACK_CATEGORIES;
-  return JSON.parse(JSON.stringify(categories)) as Category[];
+  try {
+    await connectToDatabase();
+    const categories = await CategoryModel.find({}).sort({ order: 1 }).lean();
+    return mergeCategoriesWithSamples(JSON.parse(JSON.stringify(categories)) as Category[]);
+  } catch {
+    return mergeCategoriesWithSamples([]);
+  }
 }
 
 export async function CategoryGrid() {
