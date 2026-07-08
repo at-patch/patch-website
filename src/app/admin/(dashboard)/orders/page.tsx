@@ -14,7 +14,7 @@ import {
   tableRowClass,
   type Tone,
 } from "@/components/admin/ui";
-import type { ApiListResponse, Order, OrderStatus } from "@/types";
+import type { ApiListResponse, Order, OrderStatus, PaymentStatus } from "@/types";
 
 const STATUSES: OrderStatus[] = ["placed", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
@@ -25,6 +25,15 @@ const STATUS_TONE: Record<OrderStatus, Tone> = {
   shipped: "teal",
   delivered: "green",
   cancelled: "neutral",
+};
+
+const PAYMENT_STATUSES: PaymentStatus[] = ["pending", "paid", "failed", "refunded"];
+
+const PAYMENT_STATUS_TONE: Record<PaymentStatus, Tone> = {
+  pending: "rust",
+  paid: "green",
+  failed: "red",
+  refunded: "neutral",
 };
 
 export default function AdminOrdersPage() {
@@ -45,6 +54,11 @@ export default function AdminOrdersPage() {
 
   const updateStatus = async (id: string, status: OrderStatus) => {
     await axiosInstance.patch(`/admin/orders/${id}`, { status });
+    load();
+  };
+
+  const updatePaymentStatus = async (id: string, paymentStatus: PaymentStatus) => {
+    await axiosInstance.patch(`/admin/orders/${id}`, { paymentStatus });
     load();
   };
 
@@ -90,7 +104,15 @@ export default function AdminOrdersPage() {
                 </td>
                 <td className={`${tableCellClass} text-patch-ink-muted`}>{order.items.length}</td>
                 <td className={`${tableCellClass} text-patch-ink`}>{formatPrice(order.total, order.currency)}</td>
-                <td className={`${tableCellClass} capitalize text-patch-ink-muted`}>{order.paymentMethod} · {order.paymentStatus}</td>
+                <td className={tableCellClass}>
+                  <p className="mb-1.5 text-xs capitalize text-patch-ink-muted">{order.paymentMethod}</p>
+                  <StatusPillSelect
+                    value={order.paymentStatus}
+                    tone={PAYMENT_STATUS_TONE[order.paymentStatus]}
+                    options={PAYMENT_STATUSES}
+                    onChange={(v) => updatePaymentStatus(order._id, v as PaymentStatus)}
+                  />
+                </td>
                 <td className={tableCellClass}>
                   <StatusPillSelect
                     value={order.status}

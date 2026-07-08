@@ -13,9 +13,8 @@ import type { ApiResponse, Order, PaymentMethod } from "@/types";
 const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "bkash", label: "bKash" },
-  { value: "nagad", label: "Nagad" },
-  { value: "card", label: "Visa / Mastercard" },
+  { value: "card", label: "Card (Visa / Mastercard)" },
+  { value: "cod", label: "Cash on Delivery" },
 ];
 
 function Section({
@@ -66,7 +65,7 @@ export default function CheckoutPage() {
     city: "Dhaka",
     notes: "",
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bkash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +90,16 @@ export default function CheckoutPage() {
       });
 
       dispatch(clearCart());
+
+      if (paymentMethod === "card") {
+        const { data: session } = await axiosInstance.post<ApiResponse<{ url: string }>>(
+          "/payments/stripe/checkout-session",
+          { orderId: data.data._id }
+        );
+        window.location.href = session.data.url;
+        return;
+      }
+
       router.push(`/checkout/success?order=${data.data.orderNumber}`);
     } catch (err) {
       const message =

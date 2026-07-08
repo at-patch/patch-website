@@ -37,7 +37,7 @@ const OrderSchema = new Schema(
     total: { type: Number, required: true, min: 0 },
     currency: { type: String, default: "BDT" },
     shippingAddress: { type: ShippingAddressSchema, required: true },
-    paymentMethod: { type: String, enum: ["bkash", "nagad", "card"], required: true },
+    paymentMethod: { type: String, enum: ["bkash", "nagad", "card", "cod"], required: true },
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],

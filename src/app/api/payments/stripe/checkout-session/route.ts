@@ -1,0 +1,41 @@
+import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/db";
+import OrderModel from "@/lib/models/Order";
+import { getStripe } from "@/lib/stripe";
+
+export async function POST(request: NextRequest) {
+  const { orderId } = await request.json();
+
+  await connectToDatabase();
+  const order = await OrderModel.findById(orderId);
+  if (!order) {
+    return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
+  }
+
+  const origin = request.nextUrl.origin;
+
+  try {
+    const stripe = getStripe();
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      currency: order.currency.toLowerCase(),
+      line_items: order.items.map((item: { name: string; price: number }) => ({
+        price_data: {
+          currency: order.currency.toLowerCase(),
+          product_data: { name: item.name },
+          unit_amount: Math.round(item.price * 100),
+        },
+        quantity: 1,
+      })),
+      metadata: { orderId: order._id.toString() },
+      success_url: `${origin}/checkout/success?order=${order.orderNumber}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/checkout`,
+    });
+
+    return NextResponse.json({ success: true, data: { url: session.url } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to start Stripe checkout.";
+    return NextResponse.json({ success: false, message }, { status: 502 });
+  }
+}

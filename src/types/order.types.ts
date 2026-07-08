@@ -6,7 +6,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentMethod = "bkash" | "nagad" | "card";
+export type PaymentMethod = "bkash" | "nagad" | "card" | "cod";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
