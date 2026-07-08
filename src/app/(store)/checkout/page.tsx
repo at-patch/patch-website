@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ShieldCheck } from "lucide-react";
+import { Banknote, ChevronDown, CreditCard, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,9 +11,9 @@ import type { ApiResponse, Order, PaymentMethod } from "@/types";
 
 const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
 
-const PAYMENT_OPTIONS: { value: PaymentMethod; label: string }[] = [
-  { value: "card", label: "Card (Visa / Mastercard)" },
-  { value: "cod", label: "Cash on Delivery" },
+const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof CreditCard }[] = [
+  { value: "card", label: "Card (Visa / Mastercard)", icon: CreditCard },
+  { value: "cod", label: "Cash on Delivery", icon: Banknote },
 ];
 
 function Section({
@@ -164,12 +164,13 @@ export default function CheckoutPage() {
                   type="button"
                   onClick={() => setPaymentMethod(option.value)}
                   className={cn(
-                    "rounded-lg border px-4 py-3 text-sm font-medium",
+                    "flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium",
                     paymentMethod === option.value
                       ? "border-patch-ink bg-patch-ink text-patch-bg"
                       : "border-patch-line text-patch-ink"
                   )}
                 >
+                  <option.icon size={16} />
                   {option.label}
                 </button>
               ))}
