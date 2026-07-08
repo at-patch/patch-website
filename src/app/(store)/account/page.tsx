@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X } from "lucide-react";
+import Link from "next/link";
+import { Heart, X } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { formatPrice } from "@/lib/utils";
 import type { ApiListResponse, ApiResponse, Customer, Order } from "@/types";
@@ -81,6 +82,13 @@ export default function AccountDashboardPage() {
           Logout
         </button>
       </div>
+
+      <Link
+        href="/account/wishlist"
+        className="mt-6 flex items-center gap-1.5 text-sm font-medium text-patch-ink underline underline-offset-4"
+      >
+        <Heart size={14} /> View wishlist
+      </Link>
 
       <section className="mt-10">
         <h2 className="text-sm font-medium uppercase tracking-wide text-patch-ink">Order History</h2>

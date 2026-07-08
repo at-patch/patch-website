@@ -23,6 +23,7 @@ const CustomerSchema = new Schema(
     phone: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
     addresses: { type: [SavedAddressSchema], default: [] },
+    wishlist: { type: [Schema.Types.ObjectId], ref: "Product", default: [] },
   },
   { timestamps: true }
 );

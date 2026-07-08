@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import axiosInstance from "@/lib/axios";
 import { FacebookIcon, InstagramIcon } from "@/components/ui/SocialIcons";
 
 export function Footer() {
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   return (
     <footer className="border-t border-patch-line bg-patch-bg-alt">
@@ -52,9 +54,16 @@ export function Footer() {
             <p className="mt-3 text-sm font-semibold text-patch-accent">You&apos;re on the list.</p>
           ) : (
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
-                if (email.trim()) setSubscribed(true);
+                if (!email.trim()) return;
+                setError(null);
+                try {
+                  await axiosInstance.post("/subscribers", { email });
+                  setSubscribed(true);
+                } catch {
+                  setError("Something went wrong — please try again.");
+                }
               }}
               className="mt-3 flex gap-2"
             >
@@ -71,6 +80,7 @@ export function Footer() {
               </button>
             </form>
           )}
+          {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
         </div>
       </div>
 
