@@ -4,6 +4,8 @@ import { CUSTOMER_SESSION_COOKIE, verifyCustomerToken } from "@/lib/customer-aut
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const customerToken = request.cookies.get(CUSTOMER_SESSION_COOKIE)?.value;
+  const customer = customerToken ? await verifyCustomerToken(customerToken) : null;
 
   if (pathname.startsWith("/admin")) {
     const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
@@ -14,9 +16,14 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (pathname === "/account/login" || pathname === "/account/register") {
+    if (customer) {
+      return NextResponse.redirect(new URL("/account", request.url));
+    }
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/account")) {
-    const token = request.cookies.get(CUSTOMER_SESSION_COOKIE)?.value;
-    const customer = token ? await verifyCustomerToken(token) : null;
     if (!customer) {
       return NextResponse.redirect(new URL("/account/login", request.url));
     }
@@ -31,6 +38,8 @@ export const config = {
     "/admin",
     "/admin/((?!login).*)",
     "/account",
+    "/account/login",
+    "/account/register",
     "/account/((?!login|register).*)",
   ],
 };

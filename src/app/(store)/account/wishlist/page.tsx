@@ -1,26 +1,51 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, X } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import type { ApiResponse, Product } from "@/types";
 import { ProductCard } from "@/components/store/ProductCard";
 
 export default function AccountWishlistPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchWishlist = async () => axiosInstance.get<ApiResponse<Product[]>>("/account/wishlist");
+
   const load = async () => {
-    const { data } = await axiosInstance.get<ApiResponse<Product[]>>("/account/wishlist");
+    const { data } = await fetchWishlist();
     setProducts(data.data);
     setLoading(false);
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
-    load();
-  }, []);
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const { data } = await fetchWishlist();
+        if (cancelled) return;
+
+        setProducts(data.data);
+        setLoading(false);
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          router.push("/account/login");
+          return;
+        }
+        throw error;
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleRemove = async (productId: string) => {
     await axiosInstance.delete(`/account/wishlist/${productId}`);

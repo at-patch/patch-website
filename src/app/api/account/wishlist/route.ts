@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
+import "@/lib/models/Product";
 import { requireCustomer } from "@/lib/require-customer";
 
 export async function GET(request: NextRequest) {

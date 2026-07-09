@@ -24,7 +24,15 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && typeof window !== "undefined") {
-      window.location.href = "/admin/login";
+      const requestUrl = String(error.config?.url ?? "");
+      const isAdminRequest = requestUrl.startsWith("/admin") || requestUrl.startsWith("/api/admin");
+
+      if (isAdminRequest) {
+        localStorage.removeItem("persist:auth");
+        window.location.href = "/admin/login";
+      } else {
+        window.location.href = "/account/login";
+      }
     }
     return Promise.reject(error);
   }

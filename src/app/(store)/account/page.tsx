@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Heart, X } from "lucide-react";
@@ -26,20 +27,44 @@ export default function AccountDashboardPage() {
     city: "Dhaka",
   });
 
-  const load = async () => {
-    const [{ data: me }, { data: orderData }] = await Promise.all([
+  const fetchAccountData = async () =>
+    Promise.all([
       axiosInstance.get<ApiResponse<Customer>>("/account/me"),
       axiosInstance.get<ApiListResponse<Order>>("/account/orders"),
     ]);
+
+  const load = async () => {
+    const [{ data: me }, { data: orderData }] = await fetchAccountData();
     setCustomer(me.data);
     setProfileForm({ name: me.data.name, phone: me.data.phone });
     setOrders(orderData.data);
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
-    load();
-  }, []);
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const [{ data: me }, { data: orderData }] = await fetchAccountData();
+        if (cancelled) return;
+
+        setCustomer(me.data);
+        setProfileForm({ name: me.data.name, phone: me.data.phone });
+        setOrders(orderData.data);
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          router.push("/account/login");
+          return;
+        }
+        throw error;
+      }
+    };
+
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleLogout = async () => {
     await axiosInstance.post("/account/logout");

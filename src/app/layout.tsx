@@ -27,9 +27,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${bricolage.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-patch-bg text-patch-ink">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col bg-patch-bg text-patch-ink"
+      >
         <Providers>{children}</Providers>
       </body>
     </html>
