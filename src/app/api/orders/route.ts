@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
 import { claimStockForItem, releaseStockForItem } from "@/lib/inventory";
+import { claimCoupon, releaseCouponClaim } from "@/lib/coupons";
 import { generateOrderNumber } from "@/lib/utils";
 import { requireCustomer } from "@/lib/require-customer";
 import type { CreateOrderInput } from "@/types";
@@ -46,13 +47,19 @@ export async function POST(request: NextRequest) {
 
   const claims: ClaimedItem[] = [];
   let subtotal = 0;
+  let claimedCouponCode: string | null = null;
+
+  const revertAllClaims = async () => {
+    await Promise.all(claims.map((claim) => revertClaim(claim)));
+    if (claimedCouponCode) await releaseCouponClaim(claimedCouponCode);
+  };
 
   try {
     for (const item of body.items) {
       const claimed = await claimProductStock(item);
 
       if (!claimed) {
-        await Promise.all(claims.map((claim) => revertClaim(claim)));
+        await revertAllClaims();
         return NextResponse.json(
           { success: false, message: "One or more items are no longer available." },
           { status: 409 }
@@ -63,19 +70,32 @@ export async function POST(request: NextRequest) {
       subtotal += claimed.price;
     }
 
+    let discount = 0;
+    if (body.couponCode?.trim()) {
+      const coupon = await claimCoupon(body.couponCode, subtotal);
+      if (!coupon.ok) {
+        await revertAllClaims();
+        return NextResponse.json({ success: false, message: coupon.message }, { status: 400 });
+      }
+      claimedCouponCode = coupon.code;
+      discount = coupon.discount;
+    }
+
     const order = await OrderModel.create({
       orderNumber: generateOrderNumber(),
       customer: customerId ?? undefined,
       items: body.items,
       subtotal,
-      total: subtotal,
+      couponCode: claimedCouponCode ?? "",
+      discount,
+      total: subtotal - discount,
       shippingAddress: body.shippingAddress,
       paymentMethod: body.paymentMethod,
     });
 
     return NextResponse.json({ success: true, data: order }, { status: 201 });
   } catch (error) {
-    await Promise.all(claims.map((claim) => revertClaim(claim)));
+    await revertAllClaims();
     const message = error instanceof Error ? error.message : "Failed to create order.";
     return NextResponse.json({ success: false, message }, { status: 400 });
   }

@@ -92,6 +92,16 @@ export default function AccountDashboardPage() {
     load();
   };
 
+  const handleCancelOrder = async (order: Order) => {
+    if (!window.confirm(`Cancel order ${order.orderNumber}? Paid card orders are refunded automatically.`)) return;
+    try {
+      await axiosInstance.post(`/account/orders/${order._id}/cancel`);
+    } catch {
+      // Refresh either way — the order may have moved past the cancellable window.
+    }
+    load();
+  };
+
   if (!customer) {
     return <div className="mx-auto max-w-3xl px-6 py-24 text-sm text-patch-ink-muted">Loading…</div>;
   }
@@ -122,14 +132,30 @@ export default function AccountDashboardPage() {
         ) : (
           <div className="mt-4 divide-y divide-patch-line border-y border-patch-line">
             {orders.map((order) => (
-              <div key={order._id} className="flex items-center justify-between py-3 text-sm">
+              <div key={order._id} className="flex items-center justify-between gap-4 py-3 text-sm">
                 <div>
                   <p className="font-medium text-patch-ink">{order.orderNumber}</p>
                   <p className="text-xs text-patch-ink-muted">
                     {new Date(order.createdAt).toLocaleDateString()} · {order.status}
+                    {order.paymentStatus === "refunded" ? " · refunded" : ""}
                   </p>
+                  {order.trackingNumber && (
+                    <p className="mt-0.5 text-xs text-patch-ink-muted">
+                      Tracking: {order.carrier ? `${order.carrier} · ` : ""}{order.trackingNumber}
+                    </p>
+                  )}
                 </div>
-                <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                  {["placed", "confirmed"].includes(order.status) && (
+                    <button
+                      onClick={() => handleCancelOrder(order)}
+                      className="text-xs text-patch-ink-muted underline underline-offset-4 hover:text-patch-ink"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -42,6 +42,11 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   status: OrderStatus;
+  stripePaymentIntentId?: string;
+  couponCode?: string;
+  discount?: number;
+  trackingNumber?: string;
+  carrier?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,4 +55,5 @@ export interface CreateOrderInput {
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;
+  couponCode?: string;
 }

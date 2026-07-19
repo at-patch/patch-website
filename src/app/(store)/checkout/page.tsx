@@ -3,11 +3,12 @@
 import { Banknote, ChevronDown, CreditCard, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
 import { cn, formatPrice } from "@/lib/utils";
-import { useAppSelector } from "@/store/hooks";
-import type { ApiResponse, Order, PaymentMethod } from "@/types";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { clearCoupon } from "@/store/slices/cartSlice";
+import type { ApiResponse, CouponValidationResult, Order, PaymentMethod } from "@/types";
 
 const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
 
@@ -51,6 +52,8 @@ function Section({
 
 export default function CheckoutPage() {
   const lines = useAppSelector((state) => state.cart.lines);
+  const couponCode = useAppSelector((state) => state.cart.couponCode);
+  const dispatch = useAppDispatch();
   const router = useRouter();
 
   const [openSection, setOpenSection] = useState<1 | 2 | 3>(1);
@@ -66,8 +69,32 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discount, setDiscount] = useState(0);
 
-  const total = lines.reduce((sum, l) => sum + l.price, 0);
+  const subtotal = lines.reduce((sum, l) => sum + l.price, 0);
+  // Only trust the fetched discount while a coupon is actually applied.
+  const effectiveDiscount = couponCode ? discount : 0;
+  const total = subtotal - effectiveDiscount;
+
+  // Preview the coupon applied in the cart; drop it silently if it stopped
+  // being valid (the order API re-validates either way).
+  useEffect(() => {
+    if (!couponCode || subtotal === 0) return;
+    let cancelled = false;
+    axiosInstance
+      .post<ApiResponse<CouponValidationResult>>("/coupons/validate", { code: couponCode, subtotal })
+      .then(({ data }) => {
+        if (!cancelled) setDiscount(data.data.discount);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setDiscount(0);
+        dispatch(clearCoupon());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [couponCode, subtotal, dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,6 +114,7 @@ export default function CheckoutPage() {
         })),
         shippingAddress: form,
         paymentMethod,
+        couponCode: couponCode || undefined,
       });
 
       if (paymentMethod === "card") {
@@ -205,9 +233,23 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
-            <div className="flex items-center justify-between border-t border-patch-line pt-4">
-              <p className="text-sm font-medium text-patch-ink">Total</p>
-              <p className="text-lg font-semibold text-patch-ink">{formatPrice(total)}</p>
+            <div className="space-y-1 border-t border-patch-line pt-4">
+              {effectiveDiscount > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-sm text-patch-ink-muted">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-patch-accent">
+                    <span>Discount ({couponCode})</span>
+                    <span>-{formatPrice(effectiveDiscount)}</span>
+                  </div>
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-patch-ink">Total</p>
+                <p className="text-lg font-semibold text-patch-ink">{formatPrice(total)}</p>
+              </div>
             </div>
             <p className="text-xs text-patch-ink-muted">
               By placing this order you agree to our{" "}

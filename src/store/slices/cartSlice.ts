@@ -13,9 +13,10 @@ export interface CartLine {
 
 interface CartState {
   lines: CartLine[];
+  couponCode: string;
 }
 
-const initialState: CartState = { lines: [] };
+const initialState: CartState = { lines: [], couponCode: "" };
 
 type AddToCartPayload = {
   product: Product;
@@ -63,11 +64,18 @@ const cartSlice = createSlice({
       const lineKey = getCartLineKey(action.payload);
       state.lines = state.lines.filter((line) => getCartLineKey(line) !== lineKey);
     },
+    setCoupon: (state, action: PayloadAction<string>) => {
+      state.couponCode = action.payload.trim().toUpperCase();
+    },
+    clearCoupon: (state) => {
+      state.couponCode = "";
+    },
     clearCart: (state) => {
       state.lines = [];
+      state.couponCode = "";
     },
   },
 });
 
-export const { addToCart, removeFromCart, clearCart } = cartSlice.actions;
+export const { addToCart, removeFromCart, setCoupon, clearCoupon, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;

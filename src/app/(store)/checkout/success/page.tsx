@@ -19,7 +19,9 @@ async function confirmStripeSession(sessionId: string) {
   const session = await getStripe().checkout.sessions.retrieve(sessionId);
   const orderId = session.metadata?.orderId;
   if (orderId && session.payment_status === "paid") {
-    await markOrderPaidIfPending(orderId);
+    const paymentIntentId =
+      typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+    await markOrderPaidIfPending(orderId, paymentIntentId);
   }
 }
 

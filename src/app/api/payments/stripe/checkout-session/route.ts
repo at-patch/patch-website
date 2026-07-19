@@ -18,6 +18,24 @@ export async function POST(request: NextRequest) {
   try {
     const stripe = getStripe();
 
+    // Coupon discounts ride along as a one-off Stripe coupon so the Checkout
+    // total matches the order total we recorded.
+    const discounts =
+      order.discount > 0
+        ? [
+            {
+              coupon: (
+                await stripe.coupons.create({
+                  amount_off: Math.round(order.discount * 100),
+                  currency: order.currency.toLowerCase(),
+                  duration: "once",
+                  name: order.couponCode || "Discount",
+                })
+              ).id,
+            },
+          ]
+        : undefined;
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: order.currency.toLowerCase(),
@@ -29,6 +47,7 @@ export async function POST(request: NextRequest) {
         },
         quantity: 1,
       })),
+      discounts,
       metadata: { orderId: order._id.toString() },
       success_url: `${origin}/checkout/success?order=${order.orderNumber}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/checkout`,

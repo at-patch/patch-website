@@ -45,6 +45,13 @@ const OrderSchema = new Schema(
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
+    // Recorded when the Stripe webhook (or success-page backstop) confirms payment,
+    // so refunds can target the exact payment later.
+    stripePaymentIntentId: { type: String, default: "" },
+    couponCode: { type: String, default: "", uppercase: true, trim: true },
+    discount: { type: Number, default: 0, min: 0 },
+    trackingNumber: { type: String, default: "", trim: true },
+    carrier: { type: String, default: "", trim: true },
     status: {
       type: String,
       enum: ["placed", "confirmed", "processing", "shipped", "delivered", "cancelled"],
