@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/admin/ui";
+import { logError } from "@/lib/logger";
 
 export default function AdminError({
   error,
@@ -12,7 +13,7 @@ export default function AdminError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    logError("Unhandled error in admin boundary", error, { digest: error.digest });
   }, [error]);
 
   return (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LayoutDashboard, LogOut, Mail, Package, Percent, Recycle, ShoppingCart, Tags, UserPlus } from "lucide-react";
+import { BookOpen, LayoutDashboard, LogOut, Mail, Package, Percent, Recycle, ShoppingCart, Tags, UserCog, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import axiosInstance from "@/lib/axios";
 
@@ -16,6 +16,7 @@ const LINKS = [
   { href: "/admin/journal", label: "Journal", icon: BookOpen },
   { href: "/admin/contact", label: "Contact", icon: Mail },
   { href: "/admin/leads", label: "Leads", icon: UserPlus },
+  { href: "/admin/admins", label: "Admins", icon: UserCog },
 ];
 
 export function Sidebar() {

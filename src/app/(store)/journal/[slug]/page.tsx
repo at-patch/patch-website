@@ -62,8 +62,23 @@ export default async function JournalPostPage({ params }: { params: Promise<{ sl
   const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
   const twitterShareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(post.title)}`;
 
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt,
+    image: post.coverImage ? [post.coverImage] : undefined,
+    datePublished: post.createdAt,
+    dateModified: post.updatedAt,
+    author: { "@type": "Person", name: post.author },
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <div className="relative aspect-[16/7] bg-patch-bg-alt">
         {isValidImageSrc(post.coverImage) && (
           <Image src={post.coverImage} alt={post.title} fill priority className="object-cover" />

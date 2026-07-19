@@ -4,6 +4,7 @@ import CustomerModel from "@/lib/models/Customer";
 import { generateAccountToken } from "@/lib/customer-auth";
 import { requireCustomer } from "@/lib/require-customer";
 import { sendVerificationEmail } from "@/lib/email";
+import { logError } from "@/lib/logger";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 
 const limiter = makeLimiter("verify-email-resend", 3, "10 m");
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
   try {
     await sendVerificationEmail({ to: customer.email, verifyUrl });
   } catch (error) {
-    console.error("Failed to send verification email:", error);
+    logError("Failed to send verification email", error, { customerId });
     return NextResponse.json(
       { success: false, message: "Couldn't send the email just now — try again in a bit." },
       { status: 502 }

@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
 import { generateAccountToken } from "@/lib/customer-auth";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { logError } from "@/lib/logger";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 import { parseJsonBody } from "@/lib/validation";
 import { forgotPasswordSchema } from "@/lib/validation/auth.schemas";
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
   try {
     await sendPasswordResetEmail({ to: customer.email, resetUrl });
   } catch (error) {
-    console.error("Failed to send password reset email:", error);
+    logError("Failed to send password reset email", error, { customerId: customer._id.toString() });
   }
 
   return NextResponse.json(GENERIC_RESPONSE);

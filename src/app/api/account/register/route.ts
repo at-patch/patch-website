@@ -8,6 +8,7 @@ import {
 } from "@/lib/customer-auth";
 import CustomerModel from "@/lib/models/Customer";
 import { sendVerificationEmail } from "@/lib/email";
+import { logError } from "@/lib/logger";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 import { parseJsonBody } from "@/lib/validation";
 import { registerSchema } from "@/lib/validation/auth.schemas";
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest) {
       verifyUrl: `${request.nextUrl.origin}/account/verify-email?token=${verifyToken}`,
     });
   } catch (error) {
-    console.error("Failed to send verification email:", error);
+    logError("Failed to send verification email", error, { customerId: customer._id.toString() });
   }
 
   const token = await createCustomerToken(customer._id.toString());

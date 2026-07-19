@@ -6,3 +6,12 @@ export async function requireAdmin(request: NextRequest) {
   if (!token) return null;
   return verifyAdminToken(token);
 }
+
+// Gates admin-management routes: only a session with role "owner" passes.
+// Sessions issued before roles existed (email-only payload) are rejected —
+// that admin needs to log in again to pick up a role.
+export async function requireOwnerAdmin(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (!admin || admin.role !== "owner") return null;
+  return admin;
+}

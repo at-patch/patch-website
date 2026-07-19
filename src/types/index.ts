@@ -7,4 +7,5 @@ export * from "./customer.types";
 export * from "./post.types";
 export * from "./contact.types";
 export * from "./lead.types";
+export * from "./admin.types";
 export * from "./api.types";

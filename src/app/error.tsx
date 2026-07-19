@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { logError } from "@/lib/logger";
 
 export default function RootError({
   error,
@@ -11,7 +12,7 @@ export default function RootError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    logError("Unhandled error in root boundary", error, { digest: error.digest });
   }, [error]);
 
   return (

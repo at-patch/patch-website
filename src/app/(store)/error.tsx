@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { logError } from "@/lib/logger";
 
 export default function StoreError({
   error,
@@ -11,7 +12,7 @@ export default function StoreError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    logError("Unhandled error in store boundary", error, { digest: error.digest });
   }, [error]);
 
   return (

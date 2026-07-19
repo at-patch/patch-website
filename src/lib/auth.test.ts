@@ -5,11 +5,11 @@ beforeAll(() => {
 });
 
 describe("admin session tokens", () => {
-  it("round-trips an admin email through create/verify", async () => {
+  it("round-trips an admin payload through create/verify", async () => {
     const { createAdminToken, verifyAdminToken } = await import("./auth");
-    const token = await createAdminToken("owner@patch.test");
+    const token = await createAdminToken({ sub: "admin-1", email: "owner@patch.test", role: "owner" });
     const payload = await verifyAdminToken(token);
-    expect(payload?.email).toBe("owner@patch.test");
+    expect(payload).toMatchObject({ sub: "admin-1", email: "owner@patch.test", role: "owner" });
   });
 
   it("rejects a garbage token instead of throwing", async () => {
