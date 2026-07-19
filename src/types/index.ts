@@ -6,4 +6,5 @@ export * from "./coupon.types";
 export * from "./customer.types";
 export * from "./post.types";
 export * from "./contact.types";
+export * from "./lead.types";
 export * from "./api.types";

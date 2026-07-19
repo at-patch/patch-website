@@ -21,6 +21,12 @@ export function isValidImageSrc(src?: string): src is string {
   }
 }
 
+// Escapes user input before it lands in a Mongo $regex, so special characters
+// match literally instead of altering the pattern.
+export function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function generateOrderNumber() {
   const stamp = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
