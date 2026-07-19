@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
@@ -47,6 +48,34 @@ async function getRelatedProducts(category: string, excludeId: string): Promise<
   } catch {
     return getSampleRelatedProducts(category, excludeId);
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+  if (!product) return {};
+
+  const description = product.description.slice(0, 160);
+  const image = product.images[0];
+
+  return {
+    title: product.name,
+    description,
+    openGraph: {
+      title: product.name,
+      description,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      title: product.name,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
