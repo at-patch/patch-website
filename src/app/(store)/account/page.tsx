@@ -17,6 +17,7 @@ export default function AccountDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profileForm, setProfileForm] = useState({ name: "", phone: "" });
   const [profileSaved, setProfileSaved] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState({
     label: "Home",
@@ -65,6 +66,19 @@ export default function AccountDashboardPage() {
       cancelled = true;
     };
   }, [router]);
+
+  const handleResendVerification = async () => {
+    setResendMessage(null);
+    try {
+      const { data } = await axiosInstance.post("/account/verify-email/resend");
+      setResendMessage(data.message);
+    } catch (err) {
+      setResendMessage(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          "Couldn't send the email — try again in a bit."
+      );
+    }
+  };
 
   const handleLogout = async () => {
     await axiosInstance.post("/account/logout");
@@ -117,6 +131,21 @@ export default function AccountDashboardPage() {
           Logout
         </button>
       </div>
+
+      {customer.emailVerified === false && (
+        <div className="mt-6 rounded-lg border border-patch-line bg-patch-bg-alt/60 p-4 text-sm">
+          <p className="text-patch-ink">
+            Your email isn&apos;t verified yet.{" "}
+            <button
+              onClick={handleResendVerification}
+              className="font-medium underline underline-offset-4"
+            >
+              Resend verification email
+            </button>
+          </p>
+          {resendMessage && <p className="mt-1.5 text-xs text-patch-ink-muted">{resendMessage}</p>}
+        </div>
+      )}
 
       <Link
         href="/account/wishlist"

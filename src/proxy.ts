@@ -23,6 +23,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Token-based flows work with or without a session.
+  if (
+    pathname === "/account/forgot-password" ||
+    pathname === "/account/reset-password" ||
+    pathname === "/account/verify-email"
+  ) {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/account")) {
     if (!customer) {
       return NextResponse.redirect(new URL("/account/login", request.url));
@@ -40,6 +49,9 @@ export const config = {
     "/account",
     "/account/login",
     "/account/register",
-    "/account/((?!login|register).*)",
+    "/account/forgot-password",
+    "/account/reset-password",
+    "/account/verify-email",
+    "/account/((?!login|register|forgot-password|reset-password|verify-email).*)",
   ],
 };

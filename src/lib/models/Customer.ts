@@ -22,6 +22,13 @@ const CustomerSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, required: true, trim: true },
     passwordHash: { type: String, required: true },
+    emailVerified: { type: Boolean, default: false },
+    // Only SHA-256 hashes of the one-time tokens are stored; the raw token
+    // exists solely in the email link.
+    resetTokenHash: { type: String, default: "" },
+    resetTokenExpiresAt: { type: Date, default: null },
+    verifyTokenHash: { type: String, default: "" },
+    verifyTokenExpiresAt: { type: Date, default: null },
     addresses: { type: [SavedAddressSchema], default: [] },
     wishlist: { type: [Schema.Types.ObjectId], ref: "Product", default: [] },
   },

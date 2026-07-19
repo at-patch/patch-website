@@ -1,8 +1,13 @@
 import bcrypt from "bcryptjs";
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
-import { CUSTOMER_SESSION_COOKIE, createCustomerToken } from "@/lib/customer-auth";
+import {
+  CUSTOMER_SESSION_COOKIE,
+  createCustomerToken,
+  generateAccountToken,
+} from "@/lib/customer-auth";
 import CustomerModel from "@/lib/models/Customer";
+import { sendVerificationEmail } from "@/lib/email";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 
 const limiter = makeLimiter("account-register", 5, "10 m");
@@ -28,7 +33,26 @@ export async function POST(request: NextRequest) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const customer = await CustomerModel.create({ name, email, phone, passwordHash });
+  const { token: verifyToken, hash: verifyTokenHash } = generateAccountToken();
+  const customer = await CustomerModel.create({
+    name,
+    email,
+    phone,
+    passwordHash,
+    verifyTokenHash,
+    verifyTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
+
+  // Best-effort: registration succeeds even if the email doesn't go out —
+  // the account page offers a resend.
+  try {
+    await sendVerificationEmail({
+      to: customer.email,
+      verifyUrl: `${request.nextUrl.origin}/account/verify-email?token=${verifyToken}`,
+    });
+  } catch (error) {
+    console.error("Failed to send verification email:", error);
+  }
 
   const token = await createCustomerToken(customer._id.toString());
   const response = NextResponse.json(
