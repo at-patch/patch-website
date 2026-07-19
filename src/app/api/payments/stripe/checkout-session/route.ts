@@ -3,9 +3,13 @@ import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import { getStripe } from "@/lib/stripe";
 import { releaseOrderStock } from "@/lib/inventory";
+import { parseJsonBody } from "@/lib/validation";
+import { checkoutSessionSchema } from "@/lib/validation/order.schemas";
 
 export async function POST(request: NextRequest) {
-  const { orderId } = await request.json();
+  const parsed = await parseJsonBody(request, checkoutSessionSchema);
+  if (!parsed.success) return parsed.response;
+  const { orderId } = parsed.data;
 
   await connectToDatabase();
   const order = await OrderModel.findById(orderId);

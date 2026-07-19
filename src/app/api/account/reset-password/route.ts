@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
 import { hashAccountToken } from "@/lib/customer-auth";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { resetPasswordSchema } from "@/lib/validation/auth.schemas";
 
 const limiter = makeLimiter("reset-password", 5, "10 m");
 
@@ -12,16 +14,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Too many attempts. Try again later." }, { status: 429 });
   }
 
+  const parsed = await parseJsonBody(request, resetPasswordSchema);
+  if (!parsed.success) return parsed.response;
+  const { token, password } = parsed.data;
+
   await connectToDatabase();
-  const { token, password } = await request.json();
-
-  if (typeof token !== "string" || !token || typeof password !== "string" || password.length < 8) {
-    return NextResponse.json(
-      { success: false, message: "Password must be at least 8 characters." },
-      { status: 400 }
-    );
-  }
-
   const customer = await CustomerModel.findOne({
     resetTokenHash: hashAccountToken(token),
     resetTokenExpiresAt: { $gt: new Date() },

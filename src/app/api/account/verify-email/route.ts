@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
 import { hashAccountToken } from "@/lib/customer-auth";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { verifyEmailSchema } from "@/lib/validation/auth.schemas";
 
 const limiter = makeLimiter("verify-email", 10, "10 m");
 
@@ -11,13 +13,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Too many attempts. Try again later." }, { status: 429 });
   }
 
+  const parsed = await parseJsonBody(request, verifyEmailSchema);
+  if (!parsed.success) return parsed.response;
+  const { token } = parsed.data;
+
   await connectToDatabase();
-  const { token } = await request.json();
-
-  if (typeof token !== "string" || !token) {
-    return NextResponse.json({ success: false, message: "Verification token is missing." }, { status: 400 });
-  }
-
   const customer = await CustomerModel.findOneAndUpdate(
     {
       verifyTokenHash: hashAccountToken(token),

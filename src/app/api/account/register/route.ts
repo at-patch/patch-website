@@ -9,6 +9,8 @@ import {
 import CustomerModel from "@/lib/models/Customer";
 import { sendVerificationEmail } from "@/lib/email";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { registerSchema } from "@/lib/validation/auth.schemas";
 
 const limiter = makeLimiter("account-register", 5, "10 m");
 
@@ -17,13 +19,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Too many attempts. Try again later." }, { status: 429 });
   }
 
+  const parsed = await parseJsonBody(request, registerSchema);
+  if (!parsed.success) return parsed.response;
+  const { name, email, phone, password } = parsed.data;
+
   await connectToDatabase();
-  const { name, email, phone, password } = await request.json();
-
-  if (!name || !email || !phone || !password) {
-    return NextResponse.json({ success: false, message: "All fields are required." }, { status: 400 });
-  }
-
   const existing = await CustomerModel.findOne({ email: email.toLowerCase() });
   if (existing) {
     return NextResponse.json(

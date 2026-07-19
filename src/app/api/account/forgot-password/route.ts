@@ -4,6 +4,8 @@ import CustomerModel from "@/lib/models/Customer";
 import { generateAccountToken } from "@/lib/customer-auth";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { forgotPasswordSchema } from "@/lib/validation/auth.schemas";
 
 const limiter = makeLimiter("forgot-password", 3, "10 m");
 
@@ -19,13 +21,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Too many attempts. Try again later." }, { status: 429 });
   }
 
+  const parsed = await parseJsonBody(request, forgotPasswordSchema);
+  if (!parsed.success) return parsed.response;
+  const { email } = parsed.data;
+
   await connectToDatabase();
-  const { email } = await request.json();
-
-  if (typeof email !== "string" || !email.trim()) {
-    return NextResponse.json({ success: false, message: "Email is required." }, { status: 400 });
-  }
-
   const customer = await CustomerModel.findOne({ email: email.toLowerCase().trim() });
   if (!customer) {
     return NextResponse.json(GENERIC_RESPONSE);

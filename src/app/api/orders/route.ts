@@ -6,6 +6,8 @@ import { claimStockForItem, releaseStockForItem } from "@/lib/inventory";
 import { claimCoupon, releaseCouponClaim } from "@/lib/coupons";
 import { generateOrderNumber } from "@/lib/utils";
 import { requireCustomer } from "@/lib/require-customer";
+import { parseJsonBody } from "@/lib/validation";
+import { createOrderSchema } from "@/lib/validation/order.schemas";
 import type { CreateOrderInput } from "@/types";
 
 type ClaimedItem = {
@@ -37,13 +39,12 @@ async function revertClaim(claim: ClaimedItem) {
 }
 
 export async function POST(request: NextRequest) {
+  const parsed = await parseJsonBody(request, createOrderSchema);
+  if (!parsed.success) return parsed.response;
+  const body: CreateOrderInput = parsed.data;
+
   await connectToDatabase();
   const customerId = await requireCustomer(request);
-  const body: CreateOrderInput = await request.json();
-
-  if (!body.items?.length) {
-    return NextResponse.json({ success: false, message: "Cart is empty." }, { status: 400 });
-  }
 
   const claims: ClaimedItem[] = [];
   let subtotal = 0;

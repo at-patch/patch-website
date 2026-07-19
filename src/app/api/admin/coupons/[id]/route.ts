@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import CouponModel from "@/lib/models/Coupon";
 import { requireAdmin } from "@/lib/require-admin";
+import { parseJsonBody } from "@/lib/validation";
+import { updateCouponSchema } from "@/lib/validation/coupon.schemas";
 
 export async function PATCH(
   request: NextRequest,
@@ -10,12 +12,14 @@ export async function PATCH(
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
 
+  const parsed = await parseJsonBody(request, updateCouponSchema);
+  if (!parsed.success) return parsed.response;
+
   await connectToDatabase();
   const { id } = await params;
-  const body = await request.json();
 
   try {
-    const coupon = await CouponModel.findByIdAndUpdate(id, body, { new: true, runValidators: true });
+    const coupon = await CouponModel.findByIdAndUpdate(id, parsed.data, { new: true, runValidators: true });
     if (!coupon) {
       return NextResponse.json({ success: false, message: "Coupon not found." }, { status: 404 });
     }
