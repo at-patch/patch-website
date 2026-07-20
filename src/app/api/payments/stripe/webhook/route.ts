@@ -25,7 +25,9 @@ export async function POST(request: NextRequest) {
     case "checkout.session.async_payment_succeeded": {
       const session = event.data.object as Stripe.Checkout.Session;
       const orderId = session.metadata?.orderId;
-      if (orderId) await markOrderPaidIfPending(orderId);
+      const paymentIntentId =
+        typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+      if (orderId) await markOrderPaidIfPending(orderId, paymentIntentId);
       break;
     }
     case "checkout.session.expired":

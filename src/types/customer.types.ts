@@ -13,6 +13,7 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
+  emailVerified: boolean;
   addresses: SavedAddress[];
   wishlist: string[];
   createdAt: string;

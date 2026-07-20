@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/db";
 import { CUSTOMER_SESSION_COOKIE, createCustomerToken } from "@/lib/customer-auth";
 import CustomerModel from "@/lib/models/Customer";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
+import { parseJsonBody } from "@/lib/validation";
+import { loginSchema } from "@/lib/validation/auth.schemas";
 
 const limiter = makeLimiter("account-login", 5, "60 s");
 
@@ -12,10 +14,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: false, message: "Too many attempts. Try again in a minute." }, { status: 429 });
   }
 
-  await connectToDatabase();
-  const { email, password } = await request.json();
+  const parsed = await parseJsonBody(request, loginSchema);
+  if (!parsed.success) return parsed.response;
+  const { email, password } = parsed.data;
 
-  const customer = await CustomerModel.findOne({ email: email?.toLowerCase() });
+  await connectToDatabase();
+  const customer = await CustomerModel.findOne({ email: email.toLowerCase() });
   if (!customer) {
     return NextResponse.json({ success: false, message: "Invalid email or password." }, { status: 401 });
   }

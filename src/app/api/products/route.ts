@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
+import { escapeRegex } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   await connectToDatabase();
@@ -13,7 +14,10 @@ export async function GET(request: NextRequest) {
 
   const filter: Record<string, unknown> = { status: "available" };
   if (category) filter.category = category;
-  if (search) filter.name = { $regex: search, $options: "i" };
+  if (search) {
+    const regex = { $regex: escapeRegex(search), $options: "i" };
+    filter.$or = [{ name: regex }, { description: regex }, { sku: regex }];
+  }
 
   const [items, total] = await Promise.all([
     ProductModel.find(filter)

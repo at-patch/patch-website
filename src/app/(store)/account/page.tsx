@@ -17,6 +17,7 @@ export default function AccountDashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [profileForm, setProfileForm] = useState({ name: "", phone: "" });
   const [profileSaved, setProfileSaved] = useState(false);
+  const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [addressForm, setAddressForm] = useState({
     label: "Home",
@@ -66,6 +67,19 @@ export default function AccountDashboardPage() {
     };
   }, [router]);
 
+  const handleResendVerification = async () => {
+    setResendMessage(null);
+    try {
+      const { data } = await axiosInstance.post("/account/verify-email/resend");
+      setResendMessage(data.message);
+    } catch (err) {
+      setResendMessage(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+          "Couldn't send the email — try again in a bit."
+      );
+    }
+  };
+
   const handleLogout = async () => {
     await axiosInstance.post("/account/logout");
     router.push("/account/login");
@@ -92,6 +106,16 @@ export default function AccountDashboardPage() {
     load();
   };
 
+  const handleCancelOrder = async (order: Order) => {
+    if (!window.confirm(`Cancel order ${order.orderNumber}? Paid card orders are refunded automatically.`)) return;
+    try {
+      await axiosInstance.post(`/account/orders/${order._id}/cancel`);
+    } catch {
+      // Refresh either way — the order may have moved past the cancellable window.
+    }
+    load();
+  };
+
   if (!customer) {
     return <div className="mx-auto max-w-3xl px-6 py-24 text-sm text-patch-ink-muted">Loading…</div>;
   }
@@ -108,6 +132,21 @@ export default function AccountDashboardPage() {
         </button>
       </div>
 
+      {customer.emailVerified === false && (
+        <div className="mt-6 rounded-lg border border-patch-line bg-patch-bg-alt/60 p-4 text-sm">
+          <p className="text-patch-ink">
+            Your email isn&apos;t verified yet.{" "}
+            <button
+              onClick={handleResendVerification}
+              className="font-medium underline underline-offset-4"
+            >
+              Resend verification email
+            </button>
+          </p>
+          {resendMessage && <p className="mt-1.5 text-xs text-patch-ink-muted">{resendMessage}</p>}
+        </div>
+      )}
+
       <Link
         href="/account/wishlist"
         className="mt-6 flex items-center gap-1.5 text-sm font-medium text-patch-ink underline underline-offset-4"
@@ -122,14 +161,30 @@ export default function AccountDashboardPage() {
         ) : (
           <div className="mt-4 divide-y divide-patch-line border-y border-patch-line">
             {orders.map((order) => (
-              <div key={order._id} className="flex items-center justify-between py-3 text-sm">
+              <div key={order._id} className="flex items-center justify-between gap-4 py-3 text-sm">
                 <div>
                   <p className="font-medium text-patch-ink">{order.orderNumber}</p>
                   <p className="text-xs text-patch-ink-muted">
                     {new Date(order.createdAt).toLocaleDateString()} · {order.status}
+                    {order.paymentStatus === "refunded" ? " · refunded" : ""}
                   </p>
+                  {order.trackingNumber && (
+                    <p className="mt-0.5 text-xs text-patch-ink-muted">
+                      Tracking: {order.carrier ? `${order.carrier} · ` : ""}{order.trackingNumber}
+                    </p>
+                  )}
                 </div>
-                <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                  {["placed", "confirmed"].includes(order.status) && (
+                    <button
+                      onClick={() => handleCancelOrder(order)}
+                      className="text-xs text-patch-ink-muted underline underline-offset-4 hover:text-patch-ink"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

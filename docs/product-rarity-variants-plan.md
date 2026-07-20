@@ -1,6 +1,6 @@
 # Product rarity + size/color variants
 
-_Plan only — not yet implemented in this codebase._
+_Historical implementation plan — the main rarity/variant code paths are now implemented. Use `docs/roadmap.md` as the current source of truth for remaining cleanup and verification._
 
 ## Context
 

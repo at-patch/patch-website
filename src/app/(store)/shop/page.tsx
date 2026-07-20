@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
 import CategoryModel from "@/lib/models/Category";
@@ -14,6 +15,11 @@ import {
 import type { Category, Product } from "@/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Shop",
+  description: "Browse one-of-one and limited-batch pieces upcycled from waste textiles — new styles land often.",
+};
 
 const PAGE_SIZE = 12;
 

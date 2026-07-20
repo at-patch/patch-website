@@ -1,70 +1,108 @@
-# at_patch_web — Codebase Audit & 3-Phase Roadmap
+# at_patch_web — Current Roadmap & LLM Handoff
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-20 • repository state: `b745abc` (plus uncommitted rarity/variant cleanup) • verification: `pnpm test` 71/71 passing; `pnpm lint` passing._
 
-## Overview
+## Product and technical baseline
 
-Next.js 16 (App Router) storefront + admin dashboard for an apparel/patch brand. Stack: MongoDB/Mongoose, Redux Toolkit + redux-persist (cart), JWT auth via `jose` (separate customer and admin sessions), Cloudinary uploads, bKash/Nagad payment gateways, and an AI chat widget (Vercel AI SDK + Google Vertex).
+`at_patch_web` is a Next.js 16 App Router storefront and admin dashboard for an apparel/patch shop. It uses MongoDB/Mongoose, Redux Toolkit + redux-persist for the cart, cookie-based JWT sessions for customers and admins, Cloudinary uploads, Stripe Checkout, Resend, Upstash rate limiting, and a Google Vertex-powered chat assistant.
 
-**Already solid:** product/category/inventory admin CRUD, journal CRUD, cart state management, JWT session plumbing, route protection via [src/proxy.ts](../src/proxy.ts), core storefront pages.
+The app is substantially beyond the 2026-07-08 codebase audit. The original launch-blocking wishlist, newsletter, contact inbox, rate limiting, payment, checkout, customer-account, admin, chat, SEO, validation, and testing work has been implemented. Product rarity and size/color variant support from `docs/product-rarity-variants-plan.md` has also been implemented in the main code paths. The principal work left is production readiness, real end-to-end payment/provider testing, CI setup, and the selected enhancements below.
 
----
+## Done
 
-## Phase 1 — Revenue-blocking fixes
+### Commerce and launch foundations
 
-These block a real launch — checkout currently lies to customers about payment, and two "features" silently do nothing.
+- **Checkout and payments:** Checkout creates inventory-reserved orders, supports **Cash on Delivery** and **Stripe-hosted card checkout**, and redirects card payments to Stripe. The signed Stripe webhook transitions pending orders to paid or failed, stores the payment intent, and releases inventory on failed/expired payments. Success and cancellation states are reflected in the storefront.
+- **Order operations:** Customers can cancel eligible placed/confirmed orders. Admins can update order/shipping status, carrier, and tracking number; issue Stripe refunds for paid card orders; and the customer order history displays fulfillment/refund details.
+- **Coupons:** Coupon model, admin CRUD at `/admin/coupons`, cart application/validation, server-side revalidation and atomic use claims, Stripe discount forwarding, and cleanup on failed checkout are all present.
+- **Wishlist:** Persisted customer wishlist API, product heart control, and `/account/wishlist` page are live.
+- **Newsletter and contact:** Newsletter emails are persisted. Contact messages are persisted, shown in `/admin/contact`, can be marked resolved, and trigger a best-effort Resend notification.
+- **Product rarity and variants:** Products now support `one-of-one` and `multi-quantity` rarity. Multi-quantity products carry size/color/quantity variants, admins can edit those variants, storefront product pages show a variant picker, shop size filters include in-stock variants, quick-add stays limited to 1-of-1 products, and cart lines are keyed by product + size + color.
+- **Inventory safety:** Product stock is claimed atomically while an order is created and released when checkout fails/cancels; one-of-one products use `available/reserved/sold`, while multi-quantity products decrement and restore the matching variant quantity. Refunds before shipment also release stock.
 
-1. **Payments are fake.**
-   [src/app/api/payments/bkash/route.ts](../src/app/api/payments/bkash/route.ts:5) and [src/app/api/payments/nagad/route.ts](../src/app/api/payments/nagad/route.ts:5) always return HTTP 501 — no token exchange, no signatures, no callback/webhook handling. Worse, [src/app/(store)/checkout/page.tsx:81](../src/app/(store)/checkout/page.tsx:81) never calls them at all — it creates an order and redirects to success regardless of payment, and nothing in the codebase ever sets `paymentStatus: "paid"`.
-   → Build a real bKash/Nagad integration end-to-end (token exchange, checkout redirect, callback verification, order payment-status transition), or explicitly ship cash-on-delivery only and fix the UI/copy so it doesn't imply online payment works.
+### Accounts, admin, and security
 
-2. **Contact messages vanish into a void.**
-   [src/app/api/contact/route.ts:13](../src/app/api/contact/route.ts:13) just writes to Mongo. No email/Slack notification, and no admin page exists to read submissions at all (despite the model having a `resolved` flag).
-   → Add an admin inbox page + a notification on submit (email or Slack webhook).
+- **Customer auth:** Login, registration, protected account routes, password reset, verification email, resend verification, token expiry/hash handling, and sensitive-field stripping on `/api/account/me` are implemented.
+- **Admin auth and roles:** First login bootstraps an owner from `ADMIN_EMAIL` / `ADMIN_PASSWORD`; thereafter admins are stored in MongoDB. Owners can manage staff admins in `/admin/admins`; role/active status is enforced server-side.
+- **Rate limiting:** Admin login, customer login/register, password-reset, verification resend, and contact submission have fail-open Upstash sliding-window limits.
+- **API validation:** Shared Zod parsing and schemas cover the auth, order/checkout, coupon, and admin-order mutation boundaries. The admin order route has an explicit allowlist to prevent mass assignment.
 
-3. **Wishlist is a lie.**
-   [src/components/store/WishlistButton.tsx:8](../src/components/store/WishlistButton.tsx:8) is local `useState` only — no model, no API route, no page. Toggling the heart does nothing beyond a re-render that resets on refresh.
-   → Either wire it up properly (model + API + `/account/wishlist` page) or remove the button so it's not a broken promise.
+### Storefront experience, discovery, and operations
 
-4. **Newsletter signup is a lie.**
-   [src/components/store/Footer.tsx:55-58](../src/components/store/Footer.tsx:55) flips local state on submit — the email is never stored or sent anywhere.
-   → Wire to a real subscriber store or a 3rd-party (Mailchimp/Klaviyo) or remove the form.
+- **Chat assistant:** It can query live products/availability, look up an order only when given both order number and matching checkout email, and persist consented leads. Leads are manageable in `/admin/leads`. Product search results are variant-aware, and the system prompt now distinguishes one-of-one pieces (non-standard sizing) from limited-batch pieces (standard sizes/colors, tiny per-variant stock).
+- **Product search:** Name, description, and SKU matching are supported, with user input escaped before regex querying.
+- **SEO and resilience:** Root and product/journal metadata (including Open Graph/Twitter), `robots.ts`, `sitemap.ts`, page loading skeletons, and scoped error/not-found boundaries are implemented.
+- **Journal:** Cover images render on listing, detail, and related cards; Facebook/X share links work.
+- **Admin analytics and observability basics:** The dashboard provides revenue/trend/top-product views, and server failures use the shared logger.
+- **Automated checks:** Vitest is configured with 71 unit tests across cart behavior, auth/token behavior, coupon math, validation schemas, utility behavior, admin authorization, and inventory claim/release for both rarities. `pnpm test` and `pnpm lint` are green.
 
-5. **Env var / credentials cleanup.**
-   `.env.example` lists `AI_GATEWAY_API_KEY` and full bKash/Nagad var sets that the code never reads, while `GOOGLE_VERTEX_PROJECT` / `GOOGLE_VERTEX_LOCATION` (actually used in [src/app/api/chat/route.ts:5](../src/app/api/chat/route.ts:5)) and GCP credentials are missing from it entirely. `vertex-key.json` at the repo root is currently empty.
-   → Reconcile `.env.example` with actual `process.env` usage; confirm real Vertex credentials are provisioned before relying on chat in production.
+## Open work — do next
 
-6. **Basic auth hardening.**
-   No rate limiting on login/register/contact endpoints. Admin auth is a single hardcoded email/password pair ([src/app/api/admin/login/route.ts:17](../src/app/api/admin/login/route.ts:17)) with no lockout.
-   → Add rate limiting before this is public-facing.
+### 0. Production-launch checklist (must complete before accepting real orders)
 
----
+This is configuration and verification work, not primarily new application code.
 
-## Phase 2 — Core UX & commerce completeness
+1. Provision production MongoDB, Cloudinary, Resend, Upstash, Google Vertex, Stripe, and all secrets in the deployment environment. Use `.env.example` as the complete variable checklist; never commit real keys or service-account JSON.
+2. Set `NEXT_PUBLIC_SITE_URL` to the final HTTPS domain, configure Stripe webhook delivery to `/api/payments/stripe/webhook`, and set `STRIPE_WEBHOOK_SECRET` from that endpoint.
+3. Perform Stripe test-mode end-to-end checks: successful card payment, cancelled checkout, expired/failed payment, duplicate webhook delivery, a coupon checkout, customer cancellation, and admin refund. Confirm each produces the expected order/payment/inventory result in MongoDB.
+4. Perform COD end-to-end checks: stock reservation, order confirmation, admin fulfillment/tracking update, customer cancellation, and stock release.
+5. Verify transactional email delivery and sender/domain configuration for contact alerts, registration verification, and password reset. These sends are intentionally best-effort, so monitor logs while testing.
+6. Create the first owner once, then create least-privilege staff admins; remove/rotate bootstrap `ADMIN_PASSWORD` after bootstrapping.
+7. Add deployment monitoring/alerting, backups, and a recovery owner. The current `logger` is a minimal foundation, not an external error-tracking service.
 
-1. **Order lifecycle gaps.** No refund endpoint despite the `refunded` enum existing on [src/lib/models/Order.ts:41](../src/lib/models/Order.ts:41); no shipping/tracking-number field; no customer-initiated cancel/return action (customer order list is read-only).
-2. **Customer account security.** No password reset and no email verification flow anywhere in [src/lib/customer-auth.ts](../src/lib/customer-auth.ts).
-3. **Chat widget overpromises.** The system prompt in [src/app/api/chat/route.ts:11-29](../src/app/api/chat/route.ts:11) claims access to "exact stock, order status" and promises lead capture, but `streamText` has no `tools` param — it can't query products/orders, and captured leads go nowhere.
-   → Add tool-calling (product/stock/order lookups) plus a real lead-persistence endpoint, or tone down the prompt's claims to match actual capability.
-4. **SEO gaps.** Only one static `metadata` export exists, in the root layout. Zero `generateMetadata` on product/journal/shop pages, and zero `error.tsx` / `not-found.tsx` / `loading.tsx` anywhere under `src/app`.
-5. **Journal polish.** `coverImage` exists on the `Post` model but both journal pages render an empty placeholder div instead of it ([src/app/(store)/journal/page.tsx:62](../src/app/(store)/journal/page.tsx:62), [src/app/(store)/journal/[slug]/page.tsx:33](../src/app/(store)/journal/[slug]/page.tsx:33)); social-share buttons are dead `href="#"` links.
-6. **Discounts.** Cart page literally says "Codes are coming soon" ([src/app/(store)/cart/page.tsx:72](../src/app/(store)/cart/page.tsx:72)) — build a real coupon system if it's part of the launch plan.
-7. **Search.** Currently a case-insensitive regex on `name` only ([src/app/api/products/route.ts:16](../src/app/api/products/route.ts:16)) — fine for a small catalog, but add description/SKU matching or a Mongo text index as the catalog grows.
+### 1. Payment method decision: bKash/Nagad (business decision, then implementation)
 
----
+The storefront deliberately exposes only Stripe card payments and COD. The existing `/api/payments/bkash` and `/api/payments/nagad` endpoints return `501`; their credentials remain documented as dormant sandbox variables.
 
-## Phase 3 — Scale, quality & ops maturity
+If Bangladesh-local wallet payment is required, implement one provider at a time end-to-end: signed/tokenized payment initialization, redirect UI, callback/webhook signature verification and idempotency, order payment transitions, cancellation/timeout handling, refund policy, and sandbox/production tests. Do **not** add either payment option to checkout until that is complete.
 
-1. **Testing infrastructure is completely absent.** No Vitest/Jest/Playwright, no test files, no `test` script in `package.json`.
-   → Start with checkout, auth, and cart — the highest-risk flows.
-2. **Validation layer.** `zod` is a dependency but has zero usages in the codebase — API routes rely solely on Mongoose schema validation.
-   → Add zod schemas at the API boundary for cleaner, consistent error responses.
-3. **Admin analytics.** [src/app/admin/(dashboard)/page.tsx:10](../src/app/admin/(dashboard)/page.tsx:10) only shows 4 raw counts — no revenue figures, trend charts, or top-selling products.
-4. **Ops basics.** No `sitemap.xml`/`robots.txt`, no structured data (Product schema.org), no error tracking (e.g. Sentry) or logging strategy.
-5. **Admin roles.** Single hardcoded admin account — add real multi-admin/role support if more than one person will manage the store.
+### 2. Clean up the completed rarity/variant rollout
 
----
+1. ~~Update chat assistant copy in `src/app/api/chat/route.ts`~~ — **done**: the system prompt now separates one-of-one (non-standard sizing) from limited-batch (standard sizes/colors, tiny per-variant stock).
+2. ~~Add focused tests for `src/lib/inventory.ts`~~ — **done**: `src/lib/inventory.test.ts` covers 1-of-1 claim/release, multi-quantity variant decrement/restore, color normalization, out-of-stock rejection, and mixed-rarity `releaseOrderStock`. Route-level compensation when a later cart item cannot be claimed is still open under section 3.1.
+3. Manually verify the admin + storefront variant flow against a real MongoDB dataset: create/edit one 1-of-1 product and one multi-quantity product, add multiple variants to cart, place a COD order, cancel it, and confirm the exact variant quantities are restored.
+4. Decide whether `docs/product-rarity-variants-plan.md` should be expanded into a final implementation note or deleted after the manual verification is complete; it is now marked historical so it should not be treated as the active roadmap.
+5. Review legacy data/backward compatibility in production: existing products without `rarity` are intentionally treated as 1-of-1, while new admin-created products default to multi-quantity.
 
-## Suggested sequencing
+### 3. Strengthen test coverage and delivery controls
 
-Phase 1 is the launch blocker — in particular payments, since checkout currently completes "successfully" with no money changing hands. Phases 2 and 3 can be reprioritized based on which matters more for the business: commerce completeness (Phase 2) vs. long-term maintainability (Phase 3).
+1. Add route/integration tests against an isolated MongoDB or test container for order creation, stock/coupon races, Stripe webhook idempotency, cancellation, and refunds.
+2. Add browser E2E coverage for register/verify/reset, cart/coupon, COD checkout, Stripe redirect setup, admin order workflow, and role permissions.
+3. ~~Add CI to run `pnpm lint`, `pnpm test`, and `pnpm build` on every pull request.~~ — **done**: `.github/workflows/ci.yml` runs all three on PRs to `main` and pushes to `main` (Node 24, pnpm 10, frozen lockfile). Still to do: make the check required for merge and surface status to maintainers via branch protection.
+
+### 4. Security and operational hardening
+
+1. Replace fail-open rate limiting for production-sensitive endpoints with an explicit policy: alert on Upstash failure and decide whether login/payment endpoints should fail closed.
+2. Add CSRF protection / origin validation for cookie-authenticated state-changing routes, and audit authorization ownership on every customer-facing order/address mutation.
+3. Introduce structured, centralized error tracking (for example Sentry) with request correlation and secret/PII scrubbing; add health/readiness endpoints and uptime monitoring.
+4. Define data retention/deletion procedures for customers, subscribers, contact messages, and chat leads; publish required privacy/terms/returns pages.
+5. Add database indexes and backup/restore drills for the query patterns that grow with orders, products, leads, contacts, and subscribers.
+
+### 5. Product and storefront improvements
+
+1. Replace placeholder social URLs in the footer and contact page (`href="#"`) with real profiles or remove them.
+2. Decide whether newsletter subscribers should sync to an email-marketing provider (Klaviyo/Mailchimp/etc.) and implement consent/unsubscribe/double-opt-in as needed.
+3. Add a customer return-request workflow if the business supports returns; today cancellation and admin refund are the available flows.
+4. Add richer delivery/shipping rules, shipment notifications, and possibly carrier tracking links when operations require them.
+5. Improve catalog search further with Mongo text/Atlas Search, filters, sorting, and pagination when catalog size or search quality demands it.
+6. Add product structured data (JSON-LD), canonical/alternate URL review, and analytics/conversion instrumentation.
+7. Consider image optimization, accessibility audit, and performance profiling after real production content/assets are available.
+
+## Suggested execution order
+
+1. Complete the production-launch checklist and validate Stripe + COD in the real staging environment.
+2. ~~Put CI in place with `pnpm lint`, `pnpm test`, and `pnpm build`.~~ — done via `.github/workflows/ci.yml`; add branch protection to require it.
+3. Finish the rarity/variant cleanup pass: chat copy, focused inventory tests, and one real MongoDB manual flow.
+4. Decide whether bKash or Nagad is actually required; scope and ship one provider if yes.
+5. Address security/ops hardening in parallel with the first production period.
+6. Prioritize storefront enhancements from customer feedback and business operations.
+
+## Handoff constraints for another LLM
+
+- Preserve the existing payment truth model: only Stripe webhook-confirmed card orders are `paid`; COD stays pending until manually settled by operations.
+- Treat `bKash` and `Nagad` routes as intentionally dormant, not partially working integrations.
+- Keep inventory and coupon claims atomic and reversible whenever altering checkout, cancellation, payment failure, or refund flows.
+- Keep variant identity stable as `product + size + color`; changing cart/order line shape must preserve existing checkout and stock compensation behavior.
+- Use the shared Zod request parser for new JSON API boundaries and add focused Vitest coverage with each change.
+- Respect admin roles with `requireAdmin`; do not rely only on UI gating.
+- Run `pnpm test` and `pnpm lint` after changes; run `pnpm build` for release candidates.

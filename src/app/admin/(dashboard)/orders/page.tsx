@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Undo2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { formatPrice } from "@/lib/utils";
 import {
@@ -62,6 +62,23 @@ export default function AdminOrdersPage() {
     load();
   };
 
+  const saveTracking = async (id: string, tracking: { carrier: string; trackingNumber: string }) => {
+    await axiosInstance.patch(`/admin/orders/${id}`, tracking);
+    load();
+  };
+
+  const refundOrder = async (order: Order) => {
+    if (!window.confirm(`Refund order ${order.orderNumber} (${formatPrice(order.total, order.currency)})?`)) return;
+    try {
+      await axiosInstance.post(`/admin/orders/${order._id}/refund`);
+    } catch (err) {
+      window.alert(
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Refund failed."
+      );
+    }
+    load();
+  };
+
   return (
     <div>
       <PageHeader icon={ShoppingCart} title="Orders" description="Track fulfillment from placed to delivered." />
@@ -75,12 +92,13 @@ export default function AdminOrdersPage() {
             <th className={tableCellClass}>Total</th>
             <th className={tableCellClass}>Payment</th>
             <th className={tableCellClass}>Status</th>
+            <th className={tableCellClass}>Tracking</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={6}>
+              <td colSpan={7}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -90,7 +108,7 @@ export default function AdminOrdersPage() {
             </tr>
           ) : orders.length === 0 ? (
             <tr>
-              <td colSpan={6}>
+              <td colSpan={7}>
                 <EmptyState icon={ShoppingCart} title="No orders yet" description="Orders will show up here as customers check out." />
               </td>
             </tr>
@@ -112,6 +130,14 @@ export default function AdminOrdersPage() {
                     options={PAYMENT_STATUSES}
                     onChange={(v) => updatePaymentStatus(order._id, v as PaymentStatus)}
                   />
+                  {order.paymentStatus === "paid" && (
+                    <button
+                      onClick={() => refundOrder(order)}
+                      className="mt-1.5 flex items-center gap-1 text-xs text-patch-ink-muted underline underline-offset-4 hover:text-patch-ink"
+                    >
+                      <Undo2 size={12} /> Refund
+                    </button>
+                  )}
                 </td>
                 <td className={tableCellClass}>
                   <StatusPillSelect
@@ -121,11 +147,55 @@ export default function AdminOrdersPage() {
                     onChange={(v) => updateStatus(order._id, v as OrderStatus)}
                   />
                 </td>
+                <td className={tableCellClass}>
+                  <TrackingCell order={order} onSave={saveTracking} />
+                </td>
               </tr>
             ))
           )}
         </tbody>
       </TableCard>
+    </div>
+  );
+}
+
+function TrackingCell({
+  order,
+  onSave,
+}: {
+  order: Order;
+  onSave: (id: string, tracking: { carrier: string; trackingNumber: string }) => Promise<void>;
+}) {
+  const [carrier, setCarrier] = useState(order.carrier ?? "");
+  const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber ?? "");
+
+  const dirty = carrier !== (order.carrier ?? "") || trackingNumber !== (order.trackingNumber ?? "");
+
+  const inputClass =
+    "w-32 rounded-lg border border-patch-line bg-transparent px-2.5 py-1.5 text-xs text-patch-ink outline-none placeholder:text-patch-ink-muted/60 focus:border-patch-ink";
+
+  return (
+    <div className="space-y-1.5">
+      <input
+        value={carrier}
+        onChange={(e) => setCarrier(e.target.value)}
+        placeholder="Carrier"
+        className={inputClass}
+      />
+      <input
+        value={trackingNumber}
+        onChange={(e) => setTrackingNumber(e.target.value)}
+        placeholder="Tracking #"
+        className={inputClass}
+      />
+      {dirty && (
+        <button
+          onClick={() => onSave(order._id, { carrier, trackingNumber })}
+          className="block text-xs font-medium text-patch-ink underline underline-offset-4"
+        >
+          Save
+        </button>
+      )}
     </div>
   );
 }

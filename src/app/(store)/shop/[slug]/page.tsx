@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
@@ -15,6 +16,7 @@ import {
   topUpProducts,
 } from "@/lib/sample-catalog";
 import { formatPrice, getTotalQuantity } from "@/lib/utils";
+import { SITE_URL } from "@/lib/constants";
 import type { Product } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +51,34 @@ async function getRelatedProducts(category: string, excludeId: string): Promise<
   }
 }
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
+  if (!product) return {};
+
+  const description = product.description.slice(0, 160);
+  const image = product.images[0];
+
+  return {
+    title: product.name,
+    description,
+    openGraph: {
+      title: product.name,
+      description,
+      images: image ? [{ url: image }] : undefined,
+    },
+    twitter: {
+      title: product.name,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
+
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProduct(slug);
@@ -58,8 +88,36 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const totalQuantity = getTotalQuantity(product);
   const uniqueSizes = Array.from(new Set((product.variants ?? []).map((variant) => variant.size)));
 
+  const availability =
+    product.status === "sold"
+      ? "https://schema.org/SoldOut"
+      : totalQuantity > 0
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock";
+
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description,
+    image: product.images,
+    sku: product.sku,
+    category: product.category,
+    offers: {
+      "@type": "Offer",
+      url: `${SITE_URL}/shop/${product.slug}`,
+      priceCurrency: product.currency,
+      price: product.price,
+      availability,
+    },
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 sm:grid-cols-2">
         <ProductGallery images={product.images} name={product.name} />
 

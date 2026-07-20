@@ -14,6 +14,33 @@ function getResend() {
   return client;
 }
 
+// Resend's shared sandbox sender — swap for a verified domain address once one is set up.
+const FROM = "Patch <onboarding@resend.dev>";
+
+export async function sendPasswordResetEmail({ to, resetUrl }: { to: string; resetUrl: string }) {
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Reset your Patch password",
+    text:
+      `We received a request to reset the password for your Patch account.\n\n` +
+      `Reset it here (link expires in 1 hour):\n${resetUrl}\n\n` +
+      `If you didn't request this, you can safely ignore this email — your password is unchanged.`,
+  });
+}
+
+export async function sendVerificationEmail({ to, verifyUrl }: { to: string; verifyUrl: string }) {
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Verify your Patch email",
+    text:
+      `Welcome to Patch — waste nothing, wear everything.\n\n` +
+      `Please confirm your email address (link expires in 24 hours):\n${verifyUrl}\n\n` +
+      `If you didn't create a Patch account, you can ignore this email.`,
+  });
+}
+
 export async function sendContactNotification({
   name,
   email,
@@ -31,8 +58,7 @@ export async function sendContactNotification({
   }
 
   await getResend().emails.send({
-    // Resend's shared sandbox sender — swap for a verified domain address once one is set up.
-    from: "Patch <onboarding@resend.dev>",
+    from: FROM,
     to,
     replyTo: email,
     subject: `New contact message: ${subject}`,

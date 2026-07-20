@@ -3,6 +3,8 @@ import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
 import { requireAdmin } from "@/lib/require-admin";
+import { parseJsonBody } from "@/lib/validation";
+import { adminOrderUpdateSchema } from "@/lib/validation/order.schemas";
 import type { OrderItem } from "@/types";
 
 async function getProductRarity(productId: string) {
@@ -49,9 +51,12 @@ export async function PATCH(
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
 
+  const parsed = await parseJsonBody(request, adminOrderUpdateSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
+
   await connectToDatabase();
   const { id } = await params;
-  const body = await request.json();
 
   const existingOrder = await OrderModel.findById(id);
   if (!existingOrder) {

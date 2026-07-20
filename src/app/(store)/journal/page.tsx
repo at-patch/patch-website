@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { connectToDatabase } from "@/lib/db";
 import PostModel from "@/lib/models/Post";
+import { isValidImageSrc } from "@/lib/utils";
 import type { Post, PostCategory } from "@/types";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Journal",
+  description: "Stories from the studio — sustainability, styling tips, and behind-the-scenes from Patch.",
+};
 
 const CATEGORIES: { value: PostCategory | "all"; label: string }[] = [
   { value: "all", label: "All" },
@@ -59,7 +67,17 @@ export default async function JournalPage({
         <div className="mt-10 grid gap-x-6 gap-y-10 sm:grid-cols-3">
           {posts.map((post) => (
             <Link key={post._id} href={`/journal/${post.slug}`} className="group block">
-              <div className="aspect-[4/3] rounded-none bg-patch-bg-alt" />
+              <div className="relative aspect-[4/3] overflow-hidden rounded-none bg-patch-bg-alt">
+                {isValidImageSrc(post.coverImage) && (
+                  <Image
+                    src={post.coverImage}
+                    alt={post.title}
+                    fill
+                    sizes="(min-width: 640px) 33vw, 100vw"
+                    className="object-cover transition-transform group-hover:scale-105"
+                  />
+                )}
+              </div>
               <p className="mt-4 text-xs uppercase tracking-wide text-patch-ink-muted">
                 {post.category.replace("-", " ")} · {new Date(post.createdAt).toLocaleDateString()}
               </p>

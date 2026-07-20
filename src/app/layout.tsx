@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { SITE_URL } from "@/lib/constants";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-heading",
@@ -14,9 +15,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Patch — Bold Fashion, Made for You",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Patch — Bold Fashion, Made for You",
+    template: "%s · Patch",
+  },
   description:
     "Patch is a modern fashion label for South Asia — bold western wear, thoughtfully made.",
+  openGraph: {
+    siteName: "Patch",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({

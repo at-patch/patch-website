@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import ContactMessageModel from "@/lib/models/ContactMessage";
 import { sendContactNotification } from "@/lib/email";
+import { logError } from "@/lib/logger";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 
 const limiter = makeLimiter("contact", 5, "10 m");
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
   try {
     await sendContactNotification({ name, email, subject, message });
   } catch (error) {
-    console.error("Failed to send contact notification email:", error);
+    logError("Failed to send contact notification email", error, { email });
   }
 
   return NextResponse.json({ success: true, data: { id: doc._id } }, { status: 201 });
