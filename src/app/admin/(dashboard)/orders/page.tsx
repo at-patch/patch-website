@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ShoppingCart, Undo2 } from "lucide-react";
+import { Eye, ShoppingCart, Undo2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { formatPrice } from "@/lib/utils";
 import {
@@ -93,12 +94,13 @@ export default function AdminOrdersPage() {
             <th className={tableCellClass}>Payment</th>
             <th className={tableCellClass}>Status</th>
             <th className={tableCellClass}>Tracking</th>
+            <th className={tableCellClass}></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -108,7 +110,7 @@ export default function AdminOrdersPage() {
             </tr>
           ) : orders.length === 0 ? (
             <tr>
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <EmptyState icon={ShoppingCart} title="No orders yet" description="Orders will show up here as customers check out." />
               </td>
             </tr>
@@ -149,6 +151,16 @@ export default function AdminOrdersPage() {
                 </td>
                 <td className={tableCellClass}>
                   <TrackingCell order={order} onSave={saveTracking} />
+                </td>
+                <td className={`${tableCellClass} text-right`}>
+                  <Link
+                    href={`/admin/orders/${order._id}`}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-patch-ink-muted transition hover:bg-patch-ink/5 hover:text-patch-ink"
+                    title="View order"
+                    aria-label={`View order ${order.orderNumber}`}
+                  >
+                    <Eye size={16} />
+                  </Link>
                 </td>
               </tr>
             ))

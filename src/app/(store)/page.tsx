@@ -1,6 +1,4 @@
 import { Scissors, Sparkles } from "lucide-react";
-import { connectToDatabase } from "@/lib/db";
-import ProductModel from "@/lib/models/Product";
 import { HeroSlider } from "@/components/store/HeroSlider";
 import { CategoryGrid } from "@/components/store/CategoryGrid";
 import { PromoBanner } from "@/components/store/PromoBanner";
@@ -9,35 +7,18 @@ import { PhilosophySection } from "@/components/store/PhilosophySection";
 import { TestimonialCarousel } from "@/components/store/TestimonialCarousel";
 import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
-import { hydrateProductsWithSampleImages, topUpProducts } from "@/lib/sample-catalog";
-import type { Product } from "@/types";
+import { getHomepageProductSections, type HomepageProductSection } from "@/lib/homepage";
 
 export const dynamic = "force-dynamic";
 
-async function getHomeProducts() {
-  let list: Product[] = [];
+export default async function HomePage() {
+  let productSections: HomepageProductSection[] = [];
 
   try {
-    await connectToDatabase();
-    const products = await ProductModel.find({ status: "available" })
-      .sort({ createdAt: -1 })
-      .limit(16)
-      .lean();
-    list = hydrateProductsWithSampleImages(JSON.parse(JSON.stringify(products)) as Product[]);
+    productSections = await getHomepageProductSections();
   } catch {
-    list = [];
+    productSections = [];
   }
-
-  list = hydrateProductsWithSampleImages(topUpProducts(list, 16));
-
-  return {
-    bestSelling: list.slice(0, 8),
-    newArrivals: list.slice(8, 16).length > 0 ? list.slice(8, 16) : list.slice(0, 8),
-  };
-}
-
-export default async function HomePage() {
-  const { bestSelling, newArrivals } = await getHomeProducts();
 
   return (
     <div>
@@ -51,7 +32,14 @@ export default async function HomePage() {
         accent="accent-2"
         icon={Sparkles}
       />
-      <ProductCarouselSection title="Best Selling" products={bestSelling} />
+      {productSections[0] && (
+        <ProductCarouselSection
+          title={productSections[0].title}
+          description={productSections[0].description}
+          products={productSections[0].products}
+          index={0}
+        />
+      )}
       <PromoBanner
         eyebrow="Made in Dhaka"
         title="Every stitch, done by hand."
@@ -62,7 +50,15 @@ export default async function HomePage() {
         reverse
       />
       <PhilosophySection />
-      <ProductCarouselSection title="New Arrivals" products={newArrivals} />
+      {productSections.slice(1).map((section, i) => (
+        <ProductCarouselSection
+          key={section.id}
+          title={section.title}
+          description={section.description}
+          products={section.products}
+          index={i + 1}
+        />
+      ))}
       <TestimonialCarousel />
       <InstagramGrid />
       <TrustBadges />

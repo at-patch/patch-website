@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
+import { claimGuestOrdersForCustomer } from "@/lib/order-claims";
 import { hashAccountToken } from "@/lib/customer-auth";
 import { getRequestIp, isRateLimited, makeLimiter } from "@/lib/rate-limit";
 import { parseJsonBody } from "@/lib/validation";
@@ -33,6 +34,11 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  await claimGuestOrdersForCustomer({
+    customerId: customer._id.toString(),
+    email: customer.email,
+  });
 
   return NextResponse.json({ success: true, message: "Email verified — thanks!" });
 }

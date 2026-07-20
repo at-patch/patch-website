@@ -5,6 +5,7 @@ import ProductModel from "@/lib/models/Product";
 import { requireAdmin } from "@/lib/require-admin";
 import { parseJsonBody } from "@/lib/validation";
 import { adminOrderUpdateSchema } from "@/lib/validation/order.schemas";
+import { serializeOrderWithImages } from "@/lib/order-response";
 import type { OrderItem } from "@/types";
 
 async function getProductRarity(productId: string) {
@@ -42,6 +43,26 @@ async function markOrderItemsSold(items: OrderItem[]) {
     if (rarity === "multi-quantity") continue;
     await ProductModel.updateOne({ _id: item.product }, { $set: { status: "sold" } });
   }
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const admin = await requireAdmin(request);
+  if (!admin) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+
+  await connectToDatabase();
+  const { id } = await params;
+
+  const order = await OrderModel.findById(id)
+    .populate({ path: "items.product", select: "images" })
+    .lean();
+  if (!order) {
+    return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
+  }
+
+  return NextResponse.json({ success: true, data: serializeOrderWithImages(order) });
 }
 
 export async function PATCH(

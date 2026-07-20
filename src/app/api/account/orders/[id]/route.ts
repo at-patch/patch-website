@@ -3,9 +3,13 @@ import { connectToDatabase } from "@/lib/db";
 import CustomerModel from "@/lib/models/Customer";
 import OrderModel from "@/lib/models/Order";
 import { claimGuestOrdersForCustomer } from "@/lib/order-claims";
+import { serializeOrderWithImages } from "@/lib/order-response";
 import { requireCustomer } from "@/lib/require-customer";
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const customerId = await requireCustomer(request);
   if (!customerId) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
 
@@ -20,7 +24,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  const orders = await OrderModel.find({ customer: customerId }).sort({ createdAt: -1 });
+  const { id } = await params;
+  const order = await OrderModel.findOne({ _id: id, customer: customerId })
+    .populate({ path: "items.product", select: "images" })
+    .lean();
+  if (!order) {
+    return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
+  }
 
-  return NextResponse.json({ success: true, data: orders, total: orders.length });
+  return NextResponse.json({ success: true, data: serializeOrderWithImages(order) });
 }

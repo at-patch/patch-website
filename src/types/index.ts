@@ -1,4 +1,5 @@
 export * from "./product.types";
+export * from "./product-batch.types";
 export * from "./category.types";
 export * from "./inventory.types";
 export * from "./order.types";

@@ -4,6 +4,8 @@ import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
 import { claimStockForItem, releaseStockForItem } from "@/lib/inventory";
 import { claimCoupon, releaseCouponClaim } from "@/lib/coupons";
+import { sendOrderConfirmationEmail } from "@/lib/email";
+import { logError } from "@/lib/logger";
 import { generateOrderNumber } from "@/lib/utils";
 import { requireCustomer } from "@/lib/require-customer";
 import { parseJsonBody } from "@/lib/validation";
@@ -93,6 +95,15 @@ export async function POST(request: NextRequest) {
       shippingAddress: body.shippingAddress,
       paymentMethod: body.paymentMethod,
     });
+
+    try {
+      await sendOrderConfirmationEmail({
+        to: order.shippingAddress.email,
+        order: JSON.parse(JSON.stringify(order)),
+      });
+    } catch (emailError) {
+      logError("Failed to send order confirmation email", emailError, { orderId: order._id.toString() });
+    }
 
     return NextResponse.json({ success: true, data: order }, { status: 201 });
   } catch (error) {

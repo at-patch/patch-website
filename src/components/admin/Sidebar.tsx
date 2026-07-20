@@ -2,7 +2,21 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, LayoutDashboard, LogOut, Mail, Package, Percent, Recycle, ShoppingCart, Tags, UserCog, UserPlus } from "lucide-react";
+import {
+  BookOpen,
+  Boxes,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  Package,
+  Percent,
+  Recycle,
+  Settings2,
+  ShoppingCart,
+  Tags,
+  UserCog,
+  UserPlus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import axiosInstance from "@/lib/axios";
 
@@ -10,6 +24,8 @@ const LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/inventory", label: "Inventory", icon: Recycle },
   { href: "/admin/products", label: "Products / SKUs", icon: Package },
+  { href: "/admin/product-batches", label: "Product Batches", icon: Boxes },
+  { href: "/admin/homepage-settings", label: "Homepage Settings", icon: Settings2 },
   { href: "/admin/categories", label: "Categories", icon: Tags },
   { href: "/admin/orders", label: "Orders", icon: ShoppingCart },
   { href: "/admin/coupons", label: "Coupons", icon: Percent },

@@ -1,4 +1,6 @@
 import { Resend } from "resend";
+import { formatPrice } from "@/lib/utils";
+import type { Order } from "@/types";
 
 let client: Resend | null = null;
 
@@ -63,5 +65,41 @@ export async function sendContactNotification({
     replyTo: email,
     subject: `New contact message: ${subject}`,
     text: `From: ${name} <${email}>\n\n${message}`,
+  });
+}
+
+export async function sendOrderConfirmationEmail({ to, order }: { to: string; order: Order }) {
+  const items = order.items
+    .map((item) => {
+      const color = item.color ? `, Color: ${item.color}` : "";
+      return `- ${item.name} (${item.sku}) — Size: ${item.size}${color} — ${formatPrice(item.price, order.currency)}`;
+    })
+    .join("\n");
+
+  const shipping = order.shippingAddress;
+  const discount = order.discount
+    ? `\nDiscount${order.couponCode ? ` (${order.couponCode})` : ""}: -${formatPrice(order.discount, order.currency)}`
+    : "";
+  const tracking = order.trackingNumber
+    ? `\nTracking: ${order.carrier ? `${order.carrier} ` : ""}${order.trackingNumber}`
+    : "";
+
+  await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: `Patch order confirmation ${order.orderNumber}`,
+    text:
+      `Thanks for your order, ${shipping.fullName}.\n\n` +
+      `Order: ${order.orderNumber}\n` +
+      `Status: ${order.status}\n` +
+      `Payment: ${order.paymentStatus} (${order.paymentMethod})\n\n` +
+      `Items:\n${items}\n\n` +
+      `Subtotal: ${formatPrice(order.subtotal, order.currency)}` +
+      discount +
+      `\nTotal: ${formatPrice(order.total, order.currency)}\n\n` +
+      `Shipping to:\n${shipping.fullName}\n${shipping.phone}\n${shipping.email}\n${shipping.addressLine}, ${shipping.area}, ${shipping.city}` +
+      (shipping.notes ? `\nNotes: ${shipping.notes}` : "") +
+      tracking +
+      `\n\nWe'll contact you with fulfillment updates soon.`,
   });
 }

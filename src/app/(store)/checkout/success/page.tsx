@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
+import { serializeOrderWithImages } from "@/lib/order-response";
 import { getStripe, markOrderPaidIfPending } from "@/lib/stripe";
 import { ClearCartOnMount } from "@/components/store/ClearCartOnMount";
+import { OrderInvoice } from "@/components/orders/OrderInvoice";
 import type { Order } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 async function getOrder(orderNumber: string): Promise<Order | null> {
   await connectToDatabase();
-  const order = await OrderModel.findOne({ orderNumber }).lean();
-  return order ? JSON.parse(JSON.stringify(order)) : null;
+  const order = await OrderModel.findOne({ orderNumber })
+    .populate({ path: "items.product", select: "images" })
+    .lean();
+  return order ? serializeOrderWithImages(order) : null;
 }
 
 // Backstop alongside the Stripe webhook, in case it hasn't landed yet by the
@@ -55,19 +59,22 @@ export default async function CheckoutSuccessPage({
   })();
 
   return (
-    <div className="mx-auto max-w-lg px-6 py-24 text-center">
+    <div>
       <ClearCartOnMount />
-      <h1 className="font-heading text-2xl font-extrabold tracking-tight text-patch-ink">Order placed</h1>
-      <p className="mt-3 text-sm text-patch-ink-muted">
-        {message}
-        {orderNumber ? ` (Order ${orderNumber})` : ""}
-      </p>
-      <Link
-        href="/shop"
-        className="mt-8 inline-block rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg hover:opacity-90"
-      >
-        Continue shopping
-      </Link>
+      <div className="mx-auto max-w-lg px-6 pt-20 text-center">
+        <h1 className="font-heading text-2xl font-extrabold tracking-tight text-patch-ink">Order placed</h1>
+        <p className="mt-3 text-sm text-patch-ink-muted">
+          {message}
+          {orderNumber ? ` (Order ${orderNumber})` : ""}
+        </p>
+        <Link
+          href="/shop"
+          className="mt-8 inline-block rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg hover:opacity-90"
+        >
+          Continue shopping
+        </Link>
+      </div>
+      {order && <OrderInvoice order={order} />}
     </div>
   );
 }

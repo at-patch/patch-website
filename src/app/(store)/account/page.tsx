@@ -173,6 +173,12 @@ export default function AccountDashboardPage() {
                       Tracking: {order.carrier ? `${order.carrier} · ` : ""}{order.trackingNumber}
                     </p>
                   )}
+                  <Link
+                    href={`/account/orders/${order._id}`}
+                    className="mt-1 inline-block text-xs font-medium text-patch-ink underline underline-offset-4"
+                  >
+                    View details & invoice
+                  </Link>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
                   <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
