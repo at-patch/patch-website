@@ -4,8 +4,10 @@ import useEmblaCarousel from "embla-carousel-react";
 import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+
+const AUTOPLAY_DELAY_MS = 5000;
 
 const SLIDES = [
   {
@@ -40,21 +42,55 @@ const SLIDES = [
 export function HeroSlider() {
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
   const [selected, setSelected] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const autoplayTimer = useRef<number | null>(null);
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
     setSelected(emblaApi.selectedScrollSnap());
   }, [emblaApi]);
 
+  const stopAutoplay = useCallback(() => {
+    if (!autoplayTimer.current) return;
+    window.clearInterval(autoplayTimer.current);
+    autoplayTimer.current = null;
+  }, []);
+
+  const startAutoplay = useCallback(() => {
+    if (!emblaApi || isPaused) return;
+    stopAutoplay();
+    autoplayTimer.current = window.setInterval(() => {
+      emblaApi.scrollNext();
+    }, AUTOPLAY_DELAY_MS);
+  }, [emblaApi, isPaused, stopAutoplay]);
+
   useEffect(() => {
     if (!emblaApi) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- sync initial slide state on mount
     onSelect();
     emblaApi.on("select", onSelect);
-  }, [emblaApi, onSelect]);
+    emblaApi.on("pointerDown", stopAutoplay);
+
+    return () => {
+      emblaApi.off("select", onSelect);
+      emblaApi.off("pointerDown", stopAutoplay);
+      stopAutoplay();
+    };
+  }, [emblaApi, onSelect, stopAutoplay]);
+
+  useEffect(() => {
+    startAutoplay();
+    return stopAutoplay;
+  }, [startAutoplay, stopAutoplay, selected]);
 
   return (
-    <div className="relative">
+    <div
+      className="relative"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={() => setIsPaused(false)}
+    >
       <div className="overflow-hidden" ref={emblaRef}>
         <div className="flex">
           {SLIDES.map((slide, i) => (
@@ -103,25 +139,44 @@ export function HeroSlider() {
           {SLIDES.map((_, i) => (
             <button
               key={i}
-              onClick={() => emblaApi?.scrollTo(i)}
+              onClick={() => {
+                stopAutoplay();
+                emblaApi?.scrollTo(i);
+              }}
               aria-label={`Go to slide ${i + 1}`}
               className={cn(
-                "h-1 rounded-full transition-all",
-                i === selected ? "w-6 bg-white" : "w-1 bg-white/30"
+                "relative h-1 overflow-hidden rounded-full transition-all",
+                i === selected ? "w-8 bg-white/25" : "w-1 bg-white/30"
               )}
-            />
+            >
+              {i === selected && (
+                <span
+                  key={`${selected}-${isPaused ? "paused" : "playing"}`}
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-full bg-white",
+                    !isPaused && "animate-[hero-progress_5s_linear_forwards]"
+                  )}
+                />
+              )}
+            </button>
           ))}
         </div>
         <div className="flex gap-1">
           <button
-            onClick={() => emblaApi?.scrollPrev()}
+            onClick={() => {
+              stopAutoplay();
+              emblaApi?.scrollPrev();
+            }}
             aria-label="Previous slide"
             className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
           >
             <ChevronLeft size={16} />
           </button>
           <button
-            onClick={() => emblaApi?.scrollNext()}
+            onClick={() => {
+              stopAutoplay();
+              emblaApi?.scrollNext();
+            }}
             aria-label="Next slide"
             className="flex h-8 w-8 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
           >

@@ -47,3 +47,13 @@ body {
 h1, h2, h3, h4, .font-heading {
   font-family: var(--font-heading), ui-sans-serif, system-ui, sans-serif;
 }
+
+@keyframes hero-progress {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}

@@ -79,6 +79,7 @@ type ProductForm = {
   rarity: ProductRarity;
   size: string;
   variants: VariantDraft[];
+  batchLabel: string;
 };
 
 const DEFAULT_SIZE = SIZES[3];
@@ -105,6 +106,7 @@ function createEmptyForm(category = ""): ProductForm {
     rarity: "multi-quantity" as ProductRarity,
     size: DEFAULT_SIZE,
     variants: [createVariantDraft()],
+    batchLabel: "Limited Run",
   };
 }
 
@@ -222,6 +224,7 @@ export default function AdminProductsPage() {
       materials: form.materials.split(",").map((s) => s.trim()).filter(Boolean),
       size: form.rarity === "one-of-one" ? form.size : sanitizedVariants[0]?.size ?? DEFAULT_SIZE,
       variants: form.rarity === "multi-quantity" ? sanitizedVariants : [],
+      batchLabel: form.batchLabel.trim() || (form.rarity === "one-of-one" ? "1-of-1" : "Limited Run"),
     };
 
     try {
@@ -254,6 +257,7 @@ export default function AdminProductsPage() {
       materials: (p.materials ?? []).join(", "),
       rarity,
       size: p.size || DEFAULT_SIZE,
+      batchLabel: p.batchLabel || (rarity === "one-of-one" ? "1-of-1" : "Limited Run"),
       variants:
         rarity === "multi-quantity" && p.variants.length > 0
           ? p.variants.map((variant) => ({
@@ -327,6 +331,7 @@ export default function AdminProductsPage() {
               <option value="multi-quantity">Multiple quantity</option>
               <option value="one-of-one">One of a kind (1-of-1)</option>
             </FormSelect>
+            <FormInput icon={Tags} label="Batch label" value={form.batchLabel} onChange={(v) => setForm({ ...form, batchLabel: v })} placeholder="Limited Run" />
             <FormInput icon={Shirt} label="Materials (comma separated)" value={form.materials} onChange={(v) => setForm({ ...form, materials: v })} />
           </FormSection>
 

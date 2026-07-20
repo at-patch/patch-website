@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Sparkle } from "lucide-react";
 import { formatPrice, isValidImageSrc } from "@/lib/utils";
 import { useAppDispatch } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
@@ -39,7 +39,8 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        <span className="absolute left-3 top-3 rounded-full bg-patch-accent px-2.5 py-1 text-[11px] font-semibold tracking-wide text-patch-accent-ink">
+        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-patch-accent px-2.5 py-1 text-[11px] font-semibold tracking-wide text-patch-accent-ink shadow-sm">
+          <Sparkle size={11} className="shrink-0" strokeWidth={2.5} />
           {product.batchLabel}
         </span>
 
