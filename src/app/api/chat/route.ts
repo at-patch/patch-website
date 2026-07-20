@@ -6,17 +6,49 @@ import {
   tool,
   type UIMessage,
 } from "ai";
+import { NextResponse } from "next/server";
 import { z } from "zod";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
 import OrderModel from "@/lib/models/Order";
 import LeadModel from "@/lib/models/Lead";
+import { logError } from "@/lib/logger";
 import { escapeRegex, getTotalQuantity } from "@/lib/utils";
 
-const vertex = createVertex({
-  project: process.env.GOOGLE_VERTEX_PROJECT,
-  location: process.env.GOOGLE_VERTEX_LOCATION,
-});
+function normalizePrivateKey(key?: string) {
+  return key?.replace(/\\n/g, "\n");
+}
+
+function getVertex() {
+  const project = process.env.GOOGLE_VERTEX_PROJECT;
+  const location = process.env.GOOGLE_VERTEX_LOCATION;
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
+
+  return createVertex({
+    project,
+    location,
+    googleAuthOptions:
+      clientEmail && privateKey
+        ? {
+            credentials: {
+              client_email: clientEmail,
+              private_key: privateKey,
+            },
+          }
+        : undefined,
+  });
+}
+
+function hasVertexConfig() {
+  return Boolean(
+    process.env.GOOGLE_VERTEX_PROJECT &&
+      process.env.GOOGLE_VERTEX_LOCATION &&
+      (process.env.GOOGLE_VERTEX_API_KEY ||
+        process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+        (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY))
+  );
+}
 
 export const maxDuration = 30;
 
@@ -126,15 +158,31 @@ const captureLead = tool({
 });
 
 export async function POST(req: Request) {
+  if (!hasVertexConfig()) {
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "Patch Assistant is not configured yet. Add Google Vertex credentials in Vercel environment variables.",
+      },
+      { status: 503 }
+    );
+  }
+
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const result = streamText({
-    model: vertex("gemini-2.5-flash"),
+    model: getVertex()("gemini-2.5-flash"),
     system: SYSTEM_PROMPT,
     messages: await convertToModelMessages(messages),
     tools: { searchProducts, checkOrderStatus, captureLead },
     stopWhen: stepCountIs(5),
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({
+    onError: (error) => {
+      logError("Patch Assistant failed", error);
+      return "Patch Assistant could not reply right now. Please try again in a moment.";
+    },
+  });
 }

@@ -6,16 +6,17 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-export function ChatWidget() {
-  const [open, setOpen] = useState(false);
+export function ChatWidget({ initialOpen = false }: { initialOpen?: boolean }) {
+  const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, status, error, clearError } = useChat({
     transport: new DefaultChatTransport({ api: "/api/chat" }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
+    clearError();
     sendMessage({ text: input });
     setInput("");
   };
@@ -62,6 +63,11 @@ export function ChatWidget() {
             ))}
             {status === "submitted" && (
               <p className="text-xs text-zinc-400">Patch Assistant is typing…</p>
+            )}
+            {error && (
+              <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">
+                {error.message || "Patch Assistant could not reply right now. Please try again in a moment."}
+              </p>
             )}
           </div>
 

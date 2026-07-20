@@ -9,7 +9,7 @@ import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
 import { getHomepageProductSections, type HomepageProductSection } from "@/lib/homepage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function HomePage() {
   let productSections: HomepageProductSection[] = [];
