@@ -68,7 +68,7 @@ If Bangladesh-local wallet payment is required, implement one provider at a time
 
 1. Add route/integration tests against an isolated MongoDB or test container for order creation, stock/coupon races, Stripe webhook idempotency, cancellation, and refunds.
 2. Add browser E2E coverage for register/verify/reset, cart/coupon, COD checkout, Stripe redirect setup, admin order workflow, and role permissions.
-3. Add CI to run `pnpm lint`, `pnpm test`, and `pnpm build` on every pull request. Make the test/deployment status visible to maintainers.
+3. ~~Add CI to run `pnpm lint`, `pnpm test`, and `pnpm build` on every pull request.~~ — **done**: `.github/workflows/ci.yml` runs all three on PRs to `main` and pushes to `main` (Node 24, pnpm 10, frozen lockfile). Still to do: make the check required for merge and surface status to maintainers via branch protection.
 
 ### 4. Security and operational hardening
 
@@ -91,7 +91,7 @@ If Bangladesh-local wallet payment is required, implement one provider at a time
 ## Suggested execution order
 
 1. Complete the production-launch checklist and validate Stripe + COD in the real staging environment.
-2. Put CI in place with `pnpm lint`, `pnpm test`, and `pnpm build`.
+2. ~~Put CI in place with `pnpm lint`, `pnpm test`, and `pnpm build`.~~ — done via `.github/workflows/ci.yml`; add branch protection to require it.
 3. Finish the rarity/variant cleanup pass: chat copy, focused inventory tests, and one real MongoDB manual flow.
 4. Decide whether bKash or Nagad is actually required; scope and ship one provider if yes.
 5. Address security/ops hardening in parallel with the first production period.
