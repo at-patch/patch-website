@@ -1,60 +1,39 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repo.
 
-## What this is
+## Stack
+Next.js 16 App Router storefront + admin dashboard (Patch, upcycled apparel). MongoDB/Mongoose, Redux Toolkit + redux-persist (cart/auth), cookie JWT auth (customer + admin, separate), Cloudinary, Stripe Checkout, Resend, Upstash rate limiting, Google Vertex AI chat.
 
-`at_patch_web` is a Next.js 16 (App Router) storefront + admin dashboard for Patch, an upcycled-apparel shop. MongoDB/Mongoose is the database, Redux Toolkit + redux-persist manages cart/auth client state, cookie-based JWT sessions handle both customer and admin auth, and it integrates Cloudinary (uploads), Stripe (card checkout), Resend (email), Upstash (rate limiting), and Google Vertex (AI chat assistant).
-
-See `docs/roadmap.md` for the current project state, what's implemented, and open work — it is kept up to date and is the best starting point for "what should I work on." `docs/product-rarity-variants-plan.md` is historical design context for the rarity/variant feature, not an active plan.
+`docs/roadmap.md` = live status/open work, check first. `docs/product-rarity-variants-plan.md` = historical, ignore.
 
 ## Commands
-
-```bash
-pnpm dev              # start dev server (Turbopack)
-pnpm build            # production build
-pnpm lint             # eslint
-pnpm test             # run all tests once (vitest)
-pnpm test:watch       # vitest watch mode
-pnpm vitest run src/lib/inventory.test.ts   # run a single test file
-pnpm vitest run -t "claims stock"           # run tests matching a name
 ```
-
-CI (`.github/workflows/ci.yml`) runs `pnpm lint`, `pnpm test`, `pnpm build` on PRs/pushes to `main` (Node 24, pnpm 10, frozen lockfile). Run the same three locally before considering a change done; run `pnpm build` for anything release-bound.
-
-Tests live alongside source as `*.test.ts` (vitest config only picks up `src/**/*.test.ts`, node environment, no DOM). There is no separate integration/e2e suite yet — tests are unit-level (auth, cart, coupons, inventory, validation schemas, admin authorization).
+pnpm dev / build / lint / test / test:watch
+pnpm vitest run src/lib/inventory.test.ts   # single file
+pnpm vitest run -t "name"                   # by test name
+```
+CI runs lint+test+build on PR/push to main — match locally before done. Tests: `src/**/*.test.ts`, vitest, node env, unit-level only (no e2e).
 
 ## Architecture
+- Routes: `(store)/*` = public storefront; `admin/(dashboard)/*` = gated admin, `admin/login` public. `src/proxy.ts` middleware checks JWT cookies, redirects unauthed `/admin/**`, `/account/**`.
+- Auth (2 separate JWT systems, non-interchangeable):
+  - Admin — `src/lib/auth.ts`, cookie `patch_admin_session`, secret `ADMIN_JWT_SECRET`. First login bootstraps "owner" from `ADMIN_EMAIL`/`ADMIN_PASSWORD`, then admins live in Mongo (`Admin` model, managed at `/admin/admins`). Gate API routes with `requireAdmin`/`requireOwnerAdmin` (`src/lib/require-admin.ts`) server-side — never UI-only. Pre-roles tokens carry only `email`, rejected by role-gated routes.
+  - Customer — `src/lib/customer-auth.ts`, cookie `patch_customer_session`, secret `CUSTOMER_JWT_SECRET`, gated via `src/lib/require-customer.ts`. Reset/verify tokens: raw token in email link, only SHA-256 hash stored.
+- DB: `src/lib/db.ts` `connectToDatabase()` caches connection via `global._mongooseCache` — always use this, never raw `mongoose.connect`. Models in `src/lib/models/*`, mirrored types in `src/types/*.types.ts`.
+- Validation: `src/lib/validation/*.schemas.ts` (Zod) + `parseJsonBody(request, schema)` from `validation/index.ts` — standard body parse/400 for every route. Admin order mutations use an explicit field allowlist (anti mass-assignment) — replicate for new admin mutation routes.
+- Rarity/inventory: Product `rarity` is `one-of-one` (no variants, `status: available/reserved/sold`) or `multi-quantity` (`variants[]` of `{size, color, quantity}`). No `rarity` field = legacy = treated as one-of-one; new admin products default multi-quantity. `src/lib/inventory.ts` does atomic claim/release via `findOneAndUpdate` (`$inc` on matched variant for multi-quantity, matched by size + trimmed color; status flip for one-of-one). `src/lib/order-claims.ts` = whole-order claim/release incl. rollback if a later item fails. Cart/order line identity = `product + size + color` — don't change shape without preserving checkout/stock-compensation.
+- Payments: only COD and Stripe Checkout (`src/lib/stripe.ts`, `api/payments/stripe/*`) are live. Stripe webhook is sole source of truth for `paid`; COD stays `pending` until admin settles — preserve this. `bkash`/`nagad` routes return `501` intentionally (dormant, not partial) — don't wire into checkout without full implementation.
+- Chat: `src/app/api/chat/route.ts`, Vercel AI SDK + `@ai-sdk/google-vertex`, `streamText` + tools (live product/availability query, order lookup requiring order number + matching email, consented lead capture → `Lead` model, `/admin/leads`). System prompt encodes brand voice + one-of-one vs limited-batch distinction — keep in sync.
+- Rate limiting: `src/lib/rate-limit.ts`, Upstash sliding-window on admin/customer login, register, reset, verify-resend, contact. Currently fail-open.
+- State: `src/store/` RTK store (`authSlice`, `cartSlice`, `productSlice`), persisted (`auth`,`cart` only) via redux-persist to localStorage. Use typed hooks in `store/hooks.ts`.
+- Logging: `src/lib/logger.ts` `logError()` → structured JSON via `console.error`, no external tracker yet. Use in API routes over ad hoc `console.error`.
+- Aliases: `@/*` → `src/*`, plus `@/types`, `@/store/*`.
 
-**Route groups:** `src/app/(store)/*` is the public storefront (shop, cart, checkout, account, journal, story, contact) sharing `(store)/layout.tsx`. `src/app/admin/*` is the admin dashboard, split into `admin/login` (public) and `admin/(dashboard)/*` (gated). `src/proxy.ts` is the Next middleware: it verifies the admin/customer JWT cookies and redirects unauthenticated `/admin/**` and `/account/**` requests to their respective login pages.
-
-**Auth:** Two independent, non-interchangeable JWT systems:
-- Admin: `src/lib/auth.ts` (cookie `patch_admin_session`, secret `ADMIN_JWT_SECRET`). First login bootstraps an "owner" admin from `ADMIN_EMAIL`/`ADMIN_PASSWORD`; after that, admins live in Mongo (`Admin` model) and are managed at `/admin/admins`. `src/lib/require-admin.ts` gates API routes — `requireAdmin` checks any valid session, `requireOwnerAdmin` additionally requires `role === "owner"`. Always gate admin API routes server-side with these; never rely on UI-only gating. Tokens issued before roles existed only carry `email`, so role-gated routes reject them until re-login.
-- Customer: `src/lib/customer-auth.ts` (cookie `patch_customer_session`, secret `CUSTOMER_JWT_SECRET`). `src/lib/require-customer.ts` gates customer API routes. Password reset / email verification use one-time tokens: the raw token goes in the emailed link, only its SHA-256 hash is persisted (`generateAccountToken`/`hashAccountToken`).
-
-**Data layer:** `src/lib/db.ts` caches the Mongoose connection across hot reloads/serverless invocations via `global._mongooseCache` — always go through `connectToDatabase()`, never call `mongoose.connect` directly. Models are in `src/lib/models/*` (Product, Order, Customer, Admin, Coupon, InventoryItem, Lead, Post, Category, ContactMessage, Subscriber, HomepageSettings, ProductBatch). Shared TS types mirroring these live in `src/types/*.types.ts`.
-
-**API validation:** `src/lib/validation/*.schemas.ts` holds Zod schemas per domain (auth, order, coupon, admin). `src/lib/validation/index.ts` exports `parseJsonBody(request, schema)`, the standard way every route parses/validates a JSON body and returns a uniform 400 on failure. Use it for any new JSON API boundary rather than parsing manually. The admin order-mutation route uses an explicit field allowlist to prevent mass assignment — follow that pattern for other admin mutation endpoints.
-
-**Product rarity & inventory:** Products are either `one-of-one` (single physical item, no size/color variants, `status: available/reserved/sold`) or `multi-quantity` (has a `variants[]` array of `{size, color, quantity}`). Legacy products without a `rarity` field are treated as `one-of-one`; new admin-created products default to `multi-quantity`. `src/lib/inventory.ts` (`claimStockForItem`/`releaseStockForItem`/`releaseOrderStock`) does atomic stock claim/release via `findOneAndUpdate` — one-of-one flips `status`, multi-quantity does an `$inc` on the matching variant subdocument, matched by `size` + normalized (trimmed) `color`. Cart/order line identity is `product + size + color`; do not change that shape without preserving checkout and stock-compensation behavior. `src/lib/order-claims.ts` builds on this for whole-order claim/release, including rollback when a later item in a multi-item order can't be claimed.
-
-**Payments:** Two live methods only — Cash on Delivery and Stripe Checkout Sessions (`src/lib/stripe.ts`, `src/app/api/payments/stripe/*`). The Stripe webhook is the only source of truth for marking a card order `paid`; COD orders stay `pending` until an admin manually settles them — preserve this truth model. `bkash` and `nagad` routes exist but intentionally return `501` (dormant sandbox integrations, not partially built) — don't wire them into checkout without a full end-to-end implementation.
-
-**Chat assistant:** `src/app/api/chat/route.ts` uses the Vercel AI SDK (`ai`, `@ai-sdk/google-vertex`, `@ai-sdk/react`) with `streamText` + tool calling against Google Vertex. It has tools to query live product/availability data and look up an order (only when both order number and matching checkout email are supplied), and can persist consented leads (`Lead` model, manageable at `/admin/leads`). The system prompt encodes brand voice and the one-of-one vs. limited-batch distinction — keep both in sync if product messaging changes.
-
-**Rate limiting:** `src/lib/rate-limit.ts` wraps Upstash sliding-window limiters, applied to admin login, customer login/register, password reset, verification resend, and contact submission. Currently fail-open (Upstash failure doesn't block the request) — see `docs/roadmap.md` security section before changing this for production.
-
-**Client state:** `src/store/` is a standard Redux Toolkit store (`authSlice`, `cartSlice`, `productSlice`) combined and persisted via `redux-persist` to `localStorage`, whitelisting only `auth` and `cart`. Use the typed hooks in `src/store/hooks.ts` rather than raw `useSelector`/`useDispatch`.
-
-**Errors/logging:** `src/lib/logger.ts` (`logError`) writes structured JSON to `console.error` for server-side failures — it's a minimal foundation, not an external error tracker (no Sentry yet). Use it from API routes rather than ad hoc `console.error`.
-
-**Path aliases:** `@/*` → `src/*`, plus explicit `@/types` and `@/store/*` (see `tsconfig.json`).
-
-## Handoff constraints (from `docs/roadmap.md`, still current)
-
-- Preserve the payment truth model: only Stripe-webhook-confirmed orders are `paid`; COD stays `pending` until manual settlement.
-- Treat bKash/Nagad as intentionally dormant.
-- Keep inventory and coupon claims atomic and reversible in any checkout/cancellation/payment-failure/refund change.
-- Keep variant identity stable as `product + size + color`.
-- Use `parseJsonBody` + Zod for new JSON API boundaries, and add focused Vitest coverage with each change.
-- Gate admin routes with `requireAdmin`/`requireOwnerAdmin` server-side, not just in the UI.
+## Invariants
+- Stripe webhook-confirmed = only path to `paid`; COD = manual settle.
+- bKash/Nagad stay dormant.
+- Inventory/coupon claims must stay atomic + reversible.
+- Variant identity stays `product + size + color`.
+- New JSON routes: `parseJsonBody` + Zod, add Vitest coverage.
+- Admin routes: server-side `requireAdmin`/`requireOwnerAdmin`, not UI gating.
