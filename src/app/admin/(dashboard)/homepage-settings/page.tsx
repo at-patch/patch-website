@@ -8,7 +8,9 @@ import {
   Button,
   EmptyState,
   ErrorBanner,
+  FormInput,
   FormSelect,
+  FormTextarea,
   IconButton,
   PageHeader,
   TableCard,
@@ -24,6 +26,14 @@ type HomepageRow = {
   batch: ProductBatchOption;
   enabled: boolean;
   order: number;
+};
+
+const DEFAULT_PROMO = {
+  eyebrow: "",
+  title: "",
+  body: "",
+  ctaLabel: "",
+  ctaHref: "",
 };
 
 function isBatch(value: HomepageSettings["productBatches"][number]["batch"]): value is ProductBatchOption {
@@ -43,6 +53,8 @@ function moveItem<T>(items: T[], index: number, direction: -1 | 1) {
 export default function HomepageSettingsPage() {
   const [batches, setBatches] = useState<ProductBatchOption[]>([]);
   const [rows, setRows] = useState<HomepageRow[]>([]);
+  const [primaryPromo, setPrimaryPromo] = useState(DEFAULT_PROMO);
+  const [secondaryPromo, setSecondaryPromo] = useState(DEFAULT_PROMO);
   const [selectedBatchId, setSelectedBatchId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +80,20 @@ export default function HomepageSettingsPage() {
       }));
 
     setRows(nextRows);
+    setPrimaryPromo(settingsResponse.data.primaryPromo ?? {
+      eyebrow: "New Drop",
+      title: "Color-blocked, cut for confidence.",
+      body: "Bold silhouettes and statement color, styled for how you actually move through your day.",
+      ctaLabel: "Shop Now",
+      ctaHref: "/shop",
+    });
+    setSecondaryPromo(settingsResponse.data.secondaryPromo ?? {
+      eyebrow: "Made in Dhaka",
+      title: "Every stitch, done by hand.",
+      body: "Small studio team, careful finishing, a little less waste along the way — fashion that's made thoughtfully.",
+      ctaLabel: "See the Process",
+      ctaHref: "/story",
+    });
     setBatches(batchesResponse.data);
     setSelectedBatchId(batchesResponse.data.find((batch) => batch.active && !nextRows.some((row) => row.batch._id === batch._id))?._id ?? "");
     setLoading(false);
@@ -91,6 +117,8 @@ export default function HomepageSettingsPage() {
 
     try {
       const payload = {
+        primaryPromo,
+        secondaryPromo,
         productBatches: rows.map((row, index) => ({
           batch: row.batch._id,
           enabled: row.enabled,
@@ -115,9 +143,45 @@ export default function HomepageSettingsPage() {
       <PageHeader
         icon={Settings2}
         title="Homepage Settings"
-        description="Choose which active product batches appear as homepage carousel sections."
+        description="Edit homepage promo copy and choose which active product batches appear as carousel sections."
         action={<Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save settings"}</Button>}
       />
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-2xl border border-patch-line bg-patch-bg p-4">
+          <p className="mb-4 text-sm font-semibold text-patch-ink">Primary promo</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormInput label="Eyebrow" value={primaryPromo.eyebrow} onChange={(v) => setPrimaryPromo({ ...primaryPromo, eyebrow: v })} required />
+            <FormInput label="CTA label" value={primaryPromo.ctaLabel} onChange={(v) => setPrimaryPromo({ ...primaryPromo, ctaLabel: v })} required />
+            <div className="sm:col-span-2">
+              <FormInput label="Title" value={primaryPromo.title} onChange={(v) => setPrimaryPromo({ ...primaryPromo, title: v })} required />
+            </div>
+            <div className="sm:col-span-2">
+              <FormTextarea label="Body" value={primaryPromo.body} onChange={(v) => setPrimaryPromo({ ...primaryPromo, body: v })} required />
+            </div>
+            <div className="sm:col-span-2">
+              <FormInput label="CTA URL" value={primaryPromo.ctaHref} onChange={(v) => setPrimaryPromo({ ...primaryPromo, ctaHref: v })} required />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-patch-line bg-patch-bg p-4">
+          <p className="mb-4 text-sm font-semibold text-patch-ink">Secondary promo</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormInput label="Eyebrow" value={secondaryPromo.eyebrow} onChange={(v) => setSecondaryPromo({ ...secondaryPromo, eyebrow: v })} required />
+            <FormInput label="CTA label" value={secondaryPromo.ctaLabel} onChange={(v) => setSecondaryPromo({ ...secondaryPromo, ctaLabel: v })} required />
+            <div className="sm:col-span-2">
+              <FormInput label="Title" value={secondaryPromo.title} onChange={(v) => setSecondaryPromo({ ...secondaryPromo, title: v })} required />
+            </div>
+            <div className="sm:col-span-2">
+              <FormTextarea label="Body" value={secondaryPromo.body} onChange={(v) => setSecondaryPromo({ ...secondaryPromo, body: v })} required />
+            </div>
+            <div className="sm:col-span-2">
+              <FormInput label="CTA URL" value={secondaryPromo.ctaHref} onChange={(v) => setSecondaryPromo({ ...secondaryPromo, ctaHref: v })} required />
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-patch-line bg-patch-bg p-4 sm:flex-row sm:items-end">
         <div className="flex-1">

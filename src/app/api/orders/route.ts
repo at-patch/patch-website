@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
+import ShippingCityModel from "@/lib/models/ShippingCity";
 import { claimStockForItem, releaseStockForItem } from "@/lib/inventory";
 import { claimCoupon, releaseCouponClaim } from "@/lib/coupons";
 import { sendOrderConfirmationEmail } from "@/lib/email";
@@ -84,15 +85,33 @@ export async function POST(request: NextRequest) {
       discount = coupon.discount;
     }
 
+    const shippingCity = await ShippingCityModel.findOne({
+      slug: body.shippingAddress.citySlug,
+      isActive: true,
+    }).lean();
+
+    if (!shippingCity) {
+      await revertAllClaims();
+      return NextResponse.json({ success: false, message: "Select an active shipping city." }, { status: 400 });
+    }
+
+    const shippingCost = shippingCity.shippingCost;
+
     const order = await OrderModel.create({
       orderNumber: generateOrderNumber(),
       customer: customerId ?? undefined,
       items: body.items,
       subtotal,
+      shippingCost,
       couponCode: claimedCouponCode ?? "",
       discount,
-      total: subtotal - discount,
-      shippingAddress: body.shippingAddress,
+      total: subtotal + shippingCost - discount,
+      shippingAddress: {
+        ...body.shippingAddress,
+        city: shippingCity.name,
+        citySlug: shippingCity.slug,
+        shippingCost,
+      },
       paymentMethod: body.paymentMethod,
     });
 

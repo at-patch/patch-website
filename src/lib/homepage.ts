@@ -22,12 +22,39 @@ type LeanProductBatch = {
 };
 
 type LeanHomepageSettings = {
+  primaryPromo?: HomepagePromo;
+  secondaryPromo?: HomepagePromo;
   productBatches?: Array<{
     batch?: LeanProductBatch | Types.ObjectId | string | null;
     enabled?: boolean;
     order?: number;
   }>;
 };
+
+export type HomepagePromo = {
+  eyebrow: string;
+  title: string;
+  body: string;
+  ctaLabel: string;
+  ctaHref: string;
+};
+
+export const DEFAULT_HOMEPAGE_PROMOS = {
+  primaryPromo: {
+    eyebrow: "New Drop",
+    title: "Color-blocked, cut for confidence.",
+    body: "Bold silhouettes and statement color, styled for how you actually move through your day.",
+    ctaLabel: "Shop Now",
+    ctaHref: "/shop",
+  },
+  secondaryPromo: {
+    eyebrow: "Made in Dhaka",
+    title: "Every stitch, done by hand.",
+    body: "Small studio team, careful finishing, a little less waste along the way — fashion that's made thoughtfully.",
+    ctaLabel: "See the Process",
+    ctaHref: "/story",
+  },
+} satisfies Record<string, HomepagePromo>;
 
 type LeanHomepageBatchValue = NonNullable<LeanHomepageSettings["productBatches"]>[number]["batch"];
 
@@ -73,4 +100,17 @@ export async function getHomepageProductSections(): Promise<HomepageProductSecti
         },
       ];
     });
+}
+
+export async function getHomepagePromos() {
+  await connectToDatabase();
+
+  const settings = await HomepageSettingsModel.findOne({ key: "homepage" })
+    .select("primaryPromo secondaryPromo")
+    .lean<LeanHomepageSettings | null>();
+
+  return {
+    primaryPromo: settings?.primaryPromo ?? DEFAULT_HOMEPAGE_PROMOS.primaryPromo,
+    secondaryPromo: settings?.secondaryPromo ?? DEFAULT_HOMEPAGE_PROMOS.secondaryPromo,
+  };
 }

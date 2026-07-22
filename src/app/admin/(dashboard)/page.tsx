@@ -16,7 +16,7 @@ async function getStats() {
   const [available, sold, inventoryRaw, openOrders] = await Promise.all([
     ProductModel.countDocuments({ status: "available" }),
     ProductModel.countDocuments({ status: "sold" }),
-    InventoryItemModel.countDocuments({ status: "raw" }),
+    InventoryItemModel.countDocuments({}),
     OrderModel.countDocuments({ status: { $in: ["placed", "confirmed", "processing"] } }),
   ]);
   return { available, sold, inventoryRaw, openOrders };
@@ -91,7 +91,7 @@ export default async function AdminDashboardPage() {
   const inventoryCards = [
     { label: "Live SKUs", value: stats.available, icon: CheckCircle2, tone: "bg-patch-accent/10 text-patch-accent" },
     { label: "Sold pieces", value: stats.sold, icon: ShoppingCart, tone: "bg-patch-accent-2/10 text-patch-accent-2" },
-    { label: "Raw inventory pending", value: stats.inventoryRaw, icon: Recycle, tone: "bg-patch-accent-3/10 text-patch-accent-3" },
+    { label: "Inventory items", value: stats.inventoryRaw, icon: Recycle, tone: "bg-patch-accent-3/10 text-patch-accent-3" },
     { label: "Open orders", value: stats.openOrders, icon: LayoutDashboard, tone: "bg-patch-ink/5 text-patch-ink" },
   ];
 

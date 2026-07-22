@@ -2,7 +2,7 @@ import { Recycle, RotateCcw, Truck } from "lucide-react";
 
 const BADGES = [
   { icon: Truck, label: "Free Dhaka Shipping", body: "On orders over 5,000 BDT", color: "var(--patch-accent)" },
-  { icon: RotateCcw, label: "Easy Returns", body: "7-day exchange window", color: "var(--patch-accent-2)" },
+  { icon: RotateCcw, label: "Size/Fit Exchanges", body: "No cash refunds or returns", color: "var(--patch-accent-2)" },
   { icon: Recycle, label: "Responsibly Made", body: "Less waste, by design", color: "var(--patch-accent-3)" },
 ];
 

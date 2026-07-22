@@ -6,7 +6,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentMethod = "bkash" | "nagad" | "card" | "cod";
+export type PaymentMethod = "bkash" | "nagad" | "card";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
@@ -25,8 +25,9 @@ export interface ShippingAddress {
   phone: string;
   email: string;
   addressLine: string;
-  area: string;
   city: string;
+  citySlug?: string;
+  shippingCost?: number;
   notes?: string;
 }
 
@@ -37,6 +38,7 @@ export interface Order {
   items: OrderItem[];
   subtotal: number;
   total: number;
+  shippingCost?: number;
   currency: string;
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;

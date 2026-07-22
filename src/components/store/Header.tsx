@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search, ShoppingBag, User, X } from "lucide-react";
+import { BookOpen, Home, Mail, Newspaper, Search, ShoppingBag, Store, User, X } from "lucide-react";
 import { useAppSelector } from "@/store/hooks";
 import { AnnouncementBar } from "./AnnouncementBar";
 
 const NAV_LINKS = [
-  { href: "/shop", label: "Shop" },
-  { href: "/story", label: "Our Story" },
-  { href: "/journal", label: "Journal" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", label: "Home", icon: Home },
+  { href: "/shop", label: "Shop", icon: Store },
+  { href: "/story", label: "Our Story", icon: BookOpen },
+  { href: "/journal", label: "Journal", icon: Newspaper },
+  { href: "/contact", label: "Contact", icon: Mail },
 ];
 
 export function Header() {
@@ -33,10 +34,15 @@ export function Header() {
       <AnnouncementBar />
       <header className="border-b border-patch-line bg-patch-bg/95 backdrop-blur">
         <div className="mx-auto grid max-w-6xl grid-cols-3 items-center px-6 py-4">
-          <nav className="hidden gap-6 text-sm font-medium text-patch-ink-muted sm:flex">
-            {NAV_LINKS.map((link) => (
-              <Link key={link.href} href={link.href} className="transition-colors hover:text-patch-ink">
-                {link.label}
+          <nav className="hidden gap-5 text-sm font-medium text-patch-ink-muted sm:flex">
+            {NAV_LINKS.map(({ href, icon: Icon, label }) => (
+              <Link
+                key={href}
+                href={href}
+                className="inline-flex whitespace-nowrap items-center gap-1.5 transition-colors hover:text-patch-ink"
+              >
+                <Icon size={15} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+                <span>{label}</span>
               </Link>
             ))}
           </nav>
@@ -83,9 +89,10 @@ export function Header() {
         )}
 
         <nav className="flex justify-center gap-6 border-t border-patch-line py-2 text-xs font-medium text-patch-ink-muted sm:hidden">
-          {NAV_LINKS.map((link) => (
-            <Link key={link.href} href={link.href} className="hover:text-patch-ink">
-              {link.label}
+          {NAV_LINKS.map(({ href, icon: Icon, label }) => (
+            <Link key={href} href={href} className="flex flex-col items-center gap-1 whitespace-nowrap hover:text-patch-ink">
+              <Icon size={16} strokeWidth={1.8} aria-hidden="true" className="shrink-0" />
+              <span>{label}</span>
             </Link>
           ))}
         </nav>

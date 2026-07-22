@@ -178,7 +178,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 },
                 {
                   title: "Shipping & Returns",
-                  body: "Ships within Dhaka in 2–4 business days, nationwide in 4–7. Exchanges are size/fit only within 7 days — some styles are limited-run, so restocks aren't guaranteed.",
+                  body: "Ships within Dhaka in 2–4 business days, nationwide in 4–7 business days. Exchanges are size/fit only within 7 days — some styles are limited-run, so restocks aren't guaranteed. No cash refunds or returns.",
                 },
               ]}
             />

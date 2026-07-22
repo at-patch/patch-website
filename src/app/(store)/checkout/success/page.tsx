@@ -46,9 +46,6 @@ export default async function CheckoutSuccessPage({
     if (!order) {
       return "Thank you — we've received your order. The Patch team will confirm payment and reach out with shipping details shortly.";
     }
-    if (order.paymentMethod === "cod") {
-      return "Thank you — your order is confirmed. Please have the total ready in cash on delivery.";
-    }
     if (order.paymentStatus === "paid") {
       return "Payment received — thank you! We'll reach out with shipping details shortly.";
     }

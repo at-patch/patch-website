@@ -95,9 +95,10 @@ export async function sendOrderConfirmationEmail({ to, order }: { to: string; or
       `Payment: ${order.paymentStatus} (${order.paymentMethod})\n\n` +
       `Items:\n${items}\n\n` +
       `Subtotal: ${formatPrice(order.subtotal, order.currency)}` +
+      `\nShipping: ${formatPrice(order.shippingCost ?? order.shippingAddress.shippingCost ?? 0, order.currency)}` +
       discount +
       `\nTotal: ${formatPrice(order.total, order.currency)}\n\n` +
-      `Shipping to:\n${shipping.fullName}\n${shipping.phone}\n${shipping.email}\n${shipping.addressLine}, ${shipping.area}, ${shipping.city}` +
+      `Shipping to:\n${shipping.fullName}\n${shipping.phone}\n${shipping.email}\n${shipping.addressLine}, ${shipping.city}` +
       (shipping.notes ? `\nNotes: ${shipping.notes}` : "") +
       tracking +
       `\n\nWe'll contact you with fulfillment updates soon.`,

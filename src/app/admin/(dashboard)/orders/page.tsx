@@ -120,7 +120,7 @@ export default function AdminOrdersPage() {
                 <td className={`${tableCellClass} font-medium text-patch-ink`}>{order.orderNumber}</td>
                 <td className={tableCellClass}>
                   <p className="text-patch-ink">{order.shippingAddress.fullName}</p>
-                  <p className="text-xs text-patch-ink-muted">{order.shippingAddress.phone} · {order.shippingAddress.area}</p>
+                  <p className="text-xs text-patch-ink-muted">{order.shippingAddress.phone} · {order.shippingAddress.city}</p>
                 </td>
                 <td className={`${tableCellClass} text-patch-ink-muted`}>{order.items.length}</td>
                 <td className={`${tableCellClass} text-patch-ink`}>{formatPrice(order.total, order.currency)}</td>

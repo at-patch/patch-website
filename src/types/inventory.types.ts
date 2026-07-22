@@ -1,34 +1,65 @@
-export type InventorySourceType =
-  | "donated"
-  | "purchased"
-  | "factory-offcut"
-  | "returned-garment";
-
-export type InventoryUnit = "kg" | "pieces" | "meters";
-
-export type InventoryStatus = "raw" | "processing" | "converted" | "discarded";
-
 export interface InventoryItem {
   _id: string;
   itemCode: string;
-  materialType: string;
-  sourceType: InventorySourceType;
-  quantity: number;
-  unit: InventoryUnit;
-  dateReceived: string;
-  notes: string;
-  status: InventoryStatus;
+  image: string;
+  fabricCode: string;
+  category: string;
+  heightInches: number;
+  widthInches: number;
+  quantityPcs: number;
+  description?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface InventoryItemInput {
-  itemCode: string;
-  materialType: string;
-  sourceType: InventorySourceType;
-  quantity: number;
-  unit?: InventoryUnit;
-  dateReceived?: string;
-  notes?: string;
-  status?: InventoryStatus;
+  image: string;
+  fabricCode: string;
+  category: string;
+  heightInches: number;
+  widthInches: number;
+  quantityPcs: number;
+  description?: string;
+}
+
+export interface Pattern {
+  _id: string;
+  patternCode: string;
+  patternImage: string;
+  fabricCode: string;
+  sampleCode?: string;
+  fabAmount1: string;
+  fabricAmount2: string;
+  size1: number;
+  size2: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PatternInput {
+  patternImage: string;
+  fabricCode: string;
+  sampleCode?: string;
+  fabAmount1: string;
+  fabricAmount2: string;
+  size1: number;
+  size2: number;
+}
+
+export interface ShippingCity {
+  _id: string;
+  name: string;
+  slug: string;
+  division?: string;
+  shippingCost: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingCityInput {
+  name: string;
+  division?: string;
+  shippingCost: number;
+  isActive?: boolean;
 }

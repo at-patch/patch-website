@@ -1,6 +1,6 @@
 # at_patch_web — Current Roadmap & LLM Handoff
 
-_Last updated: 2026-07-20 • repository state: `b745abc` (plus uncommitted rarity/variant cleanup) • verification: `pnpm test` 71/71 passing; `pnpm lint` passing._
+_Last updated: 2026-07-22 • repository state: storefront/admin client task pass in progress • verification: `pnpm lint`, `pnpm test` 92/92 passing, `pnpm build` passing._
 
 ## Product and technical baseline
 
@@ -12,7 +12,7 @@ The app is substantially beyond the 2026-07-08 codebase audit. The original laun
 
 ### Commerce and launch foundations
 
-- **Checkout and payments:** Checkout creates inventory-reserved orders, supports **Cash on Delivery** and **Stripe-hosted card checkout**, and redirects card payments to Stripe. The signed Stripe webhook transitions pending orders to paid or failed, stores the payment intent, and releases inventory on failed/expired payments. Success and cancellation states are reflected in the storefront.
+- **Checkout and payments:** Checkout creates inventory-reserved orders, supports **Stripe-hosted card checkout only**, and redirects card payments to Stripe. Cash on Delivery has been removed from the live checkout path by business decision. The signed Stripe webhook transitions pending orders to paid or failed, stores the payment intent, and releases inventory on failed/expired payments. Success and cancellation states are reflected in the storefront.
 - **Order operations:** Customers can cancel eligible placed/confirmed orders. Admins can update order/shipping status, carrier, and tracking number; issue Stripe refunds for paid card orders; and the customer order history displays fulfillment/refund details.
 - **Coupons:** Coupon model, admin CRUD at `/admin/coupons`, cart application/validation, server-side revalidation and atomic use claims, Stripe discount forwarding, and cleanup on failed checkout are all present.
 - **Wishlist:** Persisted customer wishlist API, product heart control, and `/account/wishlist` page are live.
@@ -34,6 +34,10 @@ The app is substantially beyond the 2026-07-08 codebase audit. The original laun
 - **SEO and resilience:** Root and product/journal metadata (including Open Graph/Twitter), `robots.ts`, `sitemap.ts`, page loading skeletons, and scoped error/not-found boundaries are implemented.
 - **Journal:** Cover images render on listing, detail, and related cards; Facebook/X share links work.
 - **Admin analytics and observability basics:** The dashboard provides revenue/trend/top-product views, and server failures use the shared logger.
+- **Shipping utilities:** Admins can manage Bangladesh shipping cities and per-city shipping costs in `/admin/utilities`. Checkout requires an active city, snapshots the city and shipping cost onto the order, and includes shipping in the Stripe checkout total.
+- **Internal raw-material tracking:** Inventory has been reshaped around the client spreadsheet fields, and Patterns are available as a separate internal admin resource with `INV-####` / `PAT-####` code generation plus optional starter records.
+- **Editable content:** Homepage promo banners and the About/Story page copy/images are editable by any admin.
+- **Storefront task pass:** Header includes Home, the primary green theme token has moved to purple, hero Buy Now points to `/shop`, category cards reveal on scroll, and checkout/product policy copy now states no cash refunds/returns with size/fit exchange within 7 days.
 - **Automated checks:** Vitest is configured with 71 unit tests across cart behavior, auth/token behavior, coupon math, validation schemas, utility behavior, admin authorization, and inventory claim/release for both rarities. `pnpm test` and `pnpm lint` are green.
 
 ## Open work — do next
@@ -52,7 +56,7 @@ This is configuration and verification work, not primarily new application code.
 
 ### 1. Payment method decision: bKash/Nagad (business decision, then implementation)
 
-The storefront deliberately exposes only Stripe card payments and COD. The existing `/api/payments/bkash` and `/api/payments/nagad` endpoints return `501`; their credentials remain documented as dormant sandbox variables.
+The storefront deliberately exposes only Stripe card payments. COD has been removed from checkout. The existing `/api/payments/bkash` and `/api/payments/nagad` endpoints return `501`; their credentials remain documented as dormant sandbox variables.
 
 If Bangladesh-local wallet payment is required, implement one provider at a time end-to-end: signed/tokenized payment initialization, redirect UI, callback/webhook signature verification and idempotency, order payment transitions, cancellation/timeout handling, refund policy, and sandbox/production tests. Do **not** add either payment option to checkout until that is complete.
 
@@ -82,7 +86,7 @@ If Bangladesh-local wallet payment is required, implement one provider at a time
 
 1. Replace placeholder social URLs in the footer and contact page (`href="#"`) with real profiles or remove them.
 2. Decide whether newsletter subscribers should sync to an email-marketing provider (Klaviyo/Mailchimp/etc.) and implement consent/unsubscribe/double-opt-in as needed.
-3. Add a customer return-request workflow if the business supports returns; today cancellation and admin refund are the available flows.
+3. Add an internal exception workflow if the business wants a formal record for phone-approved refunds; today storefront copy says no cash refunds/returns, while admins can still manually manage status/refunds.
 4. Add richer delivery/shipping rules, shipment notifications, and possibly carrier tracking links when operations require them.
 5. Improve catalog search further with Mongo text/Atlas Search, filters, sorting, and pagination when catalog size or search quality demands it.
 6. Add product structured data (JSON-LD), canonical/alternate URL review, and analytics/conversion instrumentation.
@@ -99,7 +103,7 @@ If Bangladesh-local wallet payment is required, implement one provider at a time
 
 ## Handoff constraints for another LLM
 
-- Preserve the existing payment truth model: only Stripe webhook-confirmed card orders are `paid`; COD stays pending until manually settled by operations.
+- Preserve the existing payment truth model: only Stripe webhook-confirmed card orders are `paid`; COD is no longer a live checkout method.
 - Treat `bKash` and `Nagad` routes as intentionally dormant, not partially working integrations.
 - Keep inventory and coupon claims atomic and reversible whenever altering checkout, cancellation, payment failure, or refund flows.
 - Keep variant identity stable as `product + size + color`; changing cart/order line shape must preserve existing checkout and stock compensation behavior.

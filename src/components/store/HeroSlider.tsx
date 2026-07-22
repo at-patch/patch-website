@@ -14,7 +14,7 @@ const SLIDES = [
     eyebrow: "New Season",
     title: "Bold looks, made for right now.",
     body: "Statement color, sharp silhouettes, everyday wearability — the new drop is here.",
-    cta: { href: "/shop", label: "Shop the Drop" },
+    cta: { href: "/shop", label: "Buy Now" },
     accent: "var(--patch-accent)",
     image:
       "https://images.unsplash.com/photo-1618244972963-dbee1a7edc95?fm=jpg&q=80&w=2000&auto=format&fit=crop",

@@ -63,9 +63,7 @@ export function OrderInvoice({
           </InfoBlock>
           <InfoBlock title="Shipping address">
             <p>{shipping.addressLine}</p>
-            <p>
-              {shipping.area}, {shipping.city}
-            </p>
+            <p>{shipping.city}</p>
             {shipping.notes && <p>Notes: {shipping.notes}</p>}
           </InfoBlock>
           <InfoBlock title="Order status">
@@ -125,6 +123,7 @@ export function OrderInvoice({
 
         <div className="ml-auto mt-6 w-full max-w-sm space-y-3 text-sm">
           <TotalRow label="Subtotal" value={formatPrice(order.subtotal, order.currency)} />
+          <TotalRow label="Shipping" value={formatPrice(order.shippingCost ?? shipping.shippingCost ?? 0, order.currency)} />
           {order.discount ? (
             <TotalRow
               label={order.couponCode ? `Discount (${order.couponCode})` : "Discount"}

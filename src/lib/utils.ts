@@ -33,6 +33,10 @@ export function generateOrderNumber() {
   return `PATCH-${stamp}-${rand}`;
 }
 
+export function generateShortCode(prefix: string) {
+  return `${prefix}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
 export function getTotalQuantity(product: Pick<Product, "rarity" | "status" | "variants">) {
   if (product.rarity !== "multi-quantity") {
     return product.status === "available" ? 1 : 0;

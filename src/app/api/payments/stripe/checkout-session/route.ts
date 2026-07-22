@@ -43,14 +43,29 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       currency: order.currency.toLowerCase(),
-      line_items: order.items.map((item: { name: string; price: number }) => ({
-        price_data: {
-          currency: order.currency.toLowerCase(),
-          product_data: { name: item.name },
-          unit_amount: Math.round(item.price * 100),
-        },
-        quantity: 1,
-      })),
+      line_items: order.items
+        .map((item: { name: string; price: number }) => ({
+          price_data: {
+            currency: order.currency.toLowerCase(),
+            product_data: { name: item.name },
+            unit_amount: Math.round(item.price * 100),
+          },
+          quantity: 1,
+        }))
+        .concat(
+          order.shippingCost > 0
+            ? [
+                {
+                  price_data: {
+                    currency: order.currency.toLowerCase(),
+                    product_data: { name: `Shipping to ${order.shippingAddress.city}` },
+                    unit_amount: Math.round(order.shippingCost * 100),
+                  },
+                  quantity: 1,
+                },
+              ]
+            : []
+        ),
       discounts,
       metadata: { orderId: order._id.toString() },
       success_url: `${origin}/checkout/success?order=${order.orderNumber}&session_id={CHECKOUT_SESSION_ID}`,

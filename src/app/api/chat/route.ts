@@ -19,6 +19,27 @@ function normalizePrivateKey(key?: string) {
   return key?.replace(/\\n/g, "\n");
 }
 
+// Vertex's native REST schema rejects the `id` field the AI SDK attaches to
+// functionCall/functionResponse parts (it's only valid on the Gemini Developer
+// API). Strip it before the request goes out. See vercel/ai#15664.
+const stripFunctionCallIds: typeof fetch = async (input, init) => {
+  if (typeof init?.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+      for (const content of body?.contents ?? []) {
+        for (const part of content?.parts ?? []) {
+          if (part?.functionCall) delete part.functionCall.id;
+          if (part?.functionResponse) delete part.functionResponse.id;
+        }
+      }
+      init = { ...init, body: JSON.stringify(body) };
+    } catch {
+      // Not a JSON body (or no matching shape) — send through unmodified.
+    }
+  }
+  return fetch(input, init);
+};
+
 function getVertex() {
   const project = process.env.GOOGLE_VERTEX_PROJECT;
   const location = process.env.GOOGLE_VERTEX_LOCATION;
@@ -28,6 +49,7 @@ function getVertex() {
   return createVertex({
     project,
     location,
+    fetch: stripFunctionCallIds,
     googleAuthOptions:
       clientEmail && privateKey
         ? {
@@ -75,6 +97,10 @@ Your job:
   something you can't answer, so the team can follow up. Always ask permission before saving their details.
 - If a tool returns nothing useful, say so plainly and offer to have the team follow up — never invent
   stock, prices, or order details.
+- If the customer asks something unrelated to Patch, clothing, sizing, care, sourcing, shipping, exchanges,
+  checkout, or order help, politely redirect them back to Patch topics instead of answering the off-topic
+  question. For example, if they ask "what is love?", say you can help with Patch pieces, sizing, care,
+  shipping, exchanges, or order status.
 
 Keep responses short — 2-4 sentences unless the customer asks for more detail.`;
 
@@ -163,7 +189,7 @@ export async function POST(req: Request) {
       {
         success: false,
         message:
-          "Patch Assistant is not configured yet. Add Google Vertex credentials in Vercel environment variables.",
+          "Patch Assistant is taking a quick break while chat credentials are configured. Please contact the Patch team for sizing, care, or order help.",
       },
       { status: 503 }
     );

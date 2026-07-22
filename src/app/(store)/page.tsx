@@ -7,17 +7,24 @@ import { PhilosophySection } from "@/components/store/PhilosophySection";
 import { TestimonialCarousel } from "@/components/store/TestimonialCarousel";
 import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
-import { getHomepageProductSections, type HomepageProductSection } from "@/lib/homepage";
+import {
+  DEFAULT_HOMEPAGE_PROMOS,
+  getHomepageProductSections,
+  getHomepagePromos,
+  type HomepageProductSection,
+} from "@/lib/homepage";
 
 export const revalidate = 300;
 
 export default async function HomePage() {
   let productSections: HomepageProductSection[] = [];
+  let promos = DEFAULT_HOMEPAGE_PROMOS;
 
   try {
-    productSections = await getHomepageProductSections();
+    [productSections, promos] = await Promise.all([getHomepageProductSections(), getHomepagePromos()]);
   } catch {
     productSections = [];
+    promos = DEFAULT_HOMEPAGE_PROMOS;
   }
 
   return (
@@ -25,10 +32,10 @@ export default async function HomePage() {
       <HeroSlider />
       <CategoryGrid />
       <PromoBanner
-        eyebrow="New Drop"
-        title="Color-blocked, cut for confidence."
-        body="Bold silhouettes and statement color, styled for how you actually move through your day."
-        cta={{ href: "/shop", label: "Shop Now" }}
+        eyebrow={promos.primaryPromo.eyebrow}
+        title={promos.primaryPromo.title}
+        body={promos.primaryPromo.body}
+        cta={{ href: promos.primaryPromo.ctaHref, label: promos.primaryPromo.ctaLabel }}
         accent="accent-2"
         icon={Sparkles}
       />
@@ -41,10 +48,10 @@ export default async function HomePage() {
         />
       )}
       <PromoBanner
-        eyebrow="Made in Dhaka"
-        title="Every stitch, done by hand."
-        body="Small studio team, careful finishing, a little less waste along the way — fashion that's made thoughtfully."
-        cta={{ href: "/story", label: "See the Process" }}
+        eyebrow={promos.secondaryPromo.eyebrow}
+        title={promos.secondaryPromo.title}
+        body={promos.secondaryPromo.body}
+        cta={{ href: promos.secondaryPromo.ctaHref, label: promos.secondaryPromo.ctaLabel }}
         accent="accent-3"
         icon={Scissors}
         reverse

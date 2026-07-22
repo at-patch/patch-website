@@ -19,7 +19,33 @@ export interface HomepageBatchSetting {
 export interface HomepageSettings {
   _id: string;
   key: "homepage";
+  primaryPromo?: HomepagePromo;
+  secondaryPromo?: HomepagePromo;
   productBatches: HomepageBatchSetting[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomepagePromo {
+  eyebrow: string;
+  title: string;
+  body: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+
+export interface AboutNarrative {
+  title: string;
+  body: string;
+  image?: string;
+}
+
+export interface AboutSettings {
+  _id: string;
+  key: "about";
+  eyebrow: string;
+  heroTitle: string;
+  narratives: AboutNarrative[];
   createdAt: string;
   updatedAt: string;
 }

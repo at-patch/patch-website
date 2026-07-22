@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 const MESSAGES = [
   "Free shipping on orders over 5,000 BDT within Dhaka",
+  "Size/fit exchanges within 7 days — no cash refunds or returns",
   "Every piece is 1-of-1 — once it sells, it's gone for good",
   "New limited batch drops every few weeks",
 ];

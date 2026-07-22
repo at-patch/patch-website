@@ -1,20 +1,16 @@
 "use client";
 
-import { Banknote, ChevronDown, CreditCard, ShieldCheck } from "lucide-react";
+import { ChevronDown, CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
 import { cn, formatPrice } from "@/lib/utils";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCoupon } from "@/store/slices/cartSlice";
-import type { ApiResponse, CouponValidationResult, Order, PaymentMethod } from "@/types";
-
-const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
+import type { ApiListResponse, ApiResponse, CouponValidationResult, Order, PaymentMethod, ShippingCity } from "@/types";
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof CreditCard }[] = [
   { value: "card", label: "Card (Visa / Mastercard)", icon: CreditCard },
-  { value: "cod", label: "Cash on Delivery", icon: Banknote },
 ];
 
 function Section({
@@ -54,30 +50,53 @@ export default function CheckoutPage() {
   const lines = useAppSelector((state) => state.cart.lines);
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const dispatch = useAppDispatch();
-  const router = useRouter();
 
   const [openSection, setOpenSection] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState({
     fullName: "",
-    phone: "",
+    phoneLocal: "",
     email: "",
     addressLine: "",
-    area: "gulshan" as (typeof AREAS)[number],
-    city: "Dhaka",
+    citySlug: "",
     notes: "",
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
+  const [cities, setCities] = useState<ShippingCity[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
 
   const subtotal = lines.reduce((sum, l) => sum + l.price, 0);
-  // Only trust the fetched discount while a coupon is actually applied.
+  const selectedCity = cities.find((city) => city.slug === form.citySlug);
+  const shippingCost = selectedCity?.shippingCost ?? 0;
   const effectiveDiscount = couponCode ? discount : 0;
-  const total = subtotal - effectiveDiscount;
+  const total = subtotal + shippingCost - effectiveDiscount;
 
-  // Preview the coupon applied in the cart; drop it silently if it stopped
-  // being valid (the order API re-validates either way).
+  useEffect(() => {
+    let cancelled = false;
+    axiosInstance
+      .get<ApiListResponse<ShippingCity>>("/shipping-cities")
+      .then(({ data }) => {
+        if (cancelled) return;
+        setCities(data.data);
+        setForm((current) => {
+          if (current.citySlug || data.data.length === 0) return current;
+          const dhaka = data.data.find((city) => city.slug === "dhaka");
+          return { ...current, citySlug: (dhaka ?? data.data[0]).slug };
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setError("Shipping cities are not configured yet. Please contact Patch before checkout.");
+      })
+      .finally(() => {
+        if (!cancelled) setCitiesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     if (!couponCode || subtotal === 0) return;
     let cancelled = false;
@@ -101,6 +120,12 @@ export default function CheckoutPage() {
     setSubmitting(true);
     setError(null);
 
+    if (!selectedCity) {
+      setSubmitting(false);
+      setError("Select a shipping city before placing your order.");
+      return;
+    }
+
     try {
       const { data } = await axiosInstance.post<ApiResponse<Order>>("/orders", {
         items: lines.map((l) => ({
@@ -112,21 +137,24 @@ export default function CheckoutPage() {
           size: l.size,
           color: l.color,
         })),
-        shippingAddress: form,
+        shippingAddress: {
+          fullName: form.fullName,
+          phone: `+880${form.phoneLocal.replace(/\D/g, "")}`,
+          email: form.email,
+          addressLine: form.addressLine,
+          city: selectedCity.name,
+          citySlug: selectedCity.slug,
+          notes: form.notes,
+        },
         paymentMethod,
         couponCode: couponCode || undefined,
       });
 
-      if (paymentMethod === "card") {
-        const { data: session } = await axiosInstance.post<ApiResponse<{ url: string }>>(
-          "/payments/stripe/checkout-session",
-          { orderId: data.data._id }
-        );
-        window.location.href = session.data.url;
-        return;
-      }
-
-      router.push(`/checkout/success?order=${data.data.orderNumber}`);
+      const { data: session } = await axiosInstance.post<ApiResponse<{ url: string }>>(
+        "/payments/stripe/checkout-session",
+        { orderId: data.data._id }
+      );
+      window.location.assign(session.data.url);
     } catch (err) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
@@ -154,31 +182,40 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
-              <Field label="Phone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} required />
+              <PhoneField value={form.phoneLocal} onChange={(v) => setForm({ ...form, phoneLocal: v.replace(/\D/g, "").slice(0, 10) })} />
             </div>
             <Field label="Email" type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} required />
             <Field label="Address" value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} required />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-xs font-medium text-patch-ink-muted">Area</label>
+            <div>
+              <label className="text-xs font-medium text-patch-ink-muted">City</label>
+              <div className="relative mt-1">
+                <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-patch-ink-muted" />
                 <select
-                  value={form.area}
-                  onChange={(e) => setForm({ ...form, area: e.target.value as typeof form.area })}
-                  className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm"
+                  value={form.citySlug}
+                  onChange={(e) => setForm({ ...form, citySlug: e.target.value })}
+                  disabled={citiesLoading || cities.length === 0}
+                  required
+                  className="w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 pl-9 text-sm outline-none focus:border-patch-ink disabled:opacity-60"
                 >
-                  {AREAS.map((area) => (
-                    <option key={area} value={area} className="bg-patch-bg">
-                      {area[0].toUpperCase() + area.slice(1)}
+                  {cities.length === 0 ? (
+                    <option value="" className="bg-patch-bg">
+                      No shipping cities configured
                     </option>
-                  ))}
+                  ) : (
+                    cities.map((city) => (
+                      <option key={city._id} value={city.slug} className="bg-patch-bg">
+                        {city.name}{city.division ? `, ${city.division}` : ""} — {formatPrice(city.shippingCost)}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
-              <Field label="City" value={form.city} onChange={(v) => setForm({ ...form, city: v })} required />
             </div>
             <button
               type="button"
               onClick={() => setOpenSection(2)}
-              className="rounded-full bg-patch-ink px-5 py-2 text-sm font-medium text-patch-bg"
+              disabled={!selectedCity}
+              className="rounded-full bg-patch-ink px-5 py-2 text-sm font-medium text-patch-bg disabled:opacity-50"
             >
               Continue to Payment
             </button>
@@ -187,7 +224,7 @@ export default function CheckoutPage() {
 
         <Section step={2} title="Payment Method" open={openSection === 2} onToggle={() => setOpenSection(2)}>
           <div className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2">
               {PAYMENT_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -234,17 +271,19 @@ export default function CheckoutPage() {
               ))}
             </div>
             <div className="space-y-1 border-t border-patch-line pt-4">
+              <div className="flex items-center justify-between text-sm text-patch-ink-muted">
+                <span>Subtotal</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm text-patch-ink-muted">
+                <span>Shipping{selectedCity ? ` (${selectedCity.name})` : ""}</span>
+                <span>{formatPrice(shippingCost)}</span>
+              </div>
               {effectiveDiscount > 0 && (
-                <>
-                  <div className="flex items-center justify-between text-sm text-patch-ink-muted">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(subtotal)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm text-patch-accent">
-                    <span>Discount ({couponCode})</span>
-                    <span>-{formatPrice(effectiveDiscount)}</span>
-                  </div>
-                </>
+                <div className="flex items-center justify-between text-sm text-patch-accent">
+                  <span>Discount ({couponCode})</span>
+                  <span>-{formatPrice(effectiveDiscount)}</span>
+                </div>
               )}
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-patch-ink">Total</p>
@@ -254,16 +293,16 @@ export default function CheckoutPage() {
             <p className="text-xs text-patch-ink-muted">
               By placing this order you agree to our{" "}
               <Link href="/contact" className="underline underline-offset-4">
-                return policy
+                exchange policy
               </Link>
-              .
+              . Patch does not offer cash refunds or returns; size/fit exchanges are available within 7 days.
             </p>
 
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || !selectedCity}
               className="hidden w-full rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg hover:opacity-90 disabled:opacity-50 sm:block"
             >
               {submitting ? "Placing order…" : "Place Order"}
@@ -278,7 +317,7 @@ export default function CheckoutPage() {
           </div>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !selectedCity}
             className="rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg disabled:opacity-50"
           >
             {submitting ? "Placing…" : "Place Order"}
@@ -312,6 +351,29 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm outline-none focus:border-patch-ink"
       />
+    </div>
+  );
+}
+
+function PhoneField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div>
+      <label className="text-xs font-medium text-patch-ink-muted">Phone</label>
+      <div className="mt-1 flex overflow-hidden rounded-lg border border-patch-line focus-within:border-patch-ink">
+        <div className="flex items-center gap-2 border-r border-patch-line bg-patch-bg-alt px-3 text-sm font-medium text-patch-ink">
+          <span aria-hidden="true">🇧🇩</span>
+          <span>+880</span>
+        </div>
+        <input
+          required
+          inputMode="numeric"
+          pattern="1[0-9]{9}"
+          value={value}
+          placeholder="1XXXXXXXXX"
+          onChange={(e) => onChange(e.target.value)}
+          className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-patch-ink-muted"
+        />
+      </div>
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { connectToDatabase } from "@/lib/db";
 import HomepageSettingsModel from "@/lib/models/HomepageSettings";
 import ProductBatchModel from "@/lib/models/ProductBatch";
 import { requireAdmin } from "@/lib/require-admin";
+import { parseJsonBody } from "@/lib/validation";
+import { homepageSettingsUpdateSchema } from "@/lib/validation/cms.schemas";
 
 function sanitizeRows(value: unknown) {
   if (!Array.isArray(value)) return [];
@@ -57,14 +59,21 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const admin = await requireAdmin(request);
   if (!admin) return NextResponse.json({ success: false, message: "Unauthorized." }, { status: 401 });
+  const parsed = await parseJsonBody(request, homepageSettingsUpdateSchema);
+  if (!parsed.success) return parsed.response;
 
   await connectToDatabase();
-  const body = await request.json();
-  const productBatches = sanitizeRows((body as Record<string, unknown>).productBatches);
+  const productBatches = sanitizeRows(parsed.data.productBatches);
+  const update: Record<string, unknown> = { productBatches };
+  if (parsed.data.primaryPromo) update.primaryPromo = parsed.data.primaryPromo;
+  if (parsed.data.secondaryPromo) update.secondaryPromo = parsed.data.secondaryPromo;
 
   const settings = await HomepageSettingsModel.findOneAndUpdate(
     { key: "homepage" },
-    { $set: { productBatches }, $setOnInsert: { key: "homepage" } },
+    {
+      $set: update,
+      $setOnInsert: { key: "homepage" },
+    },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   )
     .populate({ path: "productBatches.batch", model: ProductBatchModel })

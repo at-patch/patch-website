@@ -3,21 +3,13 @@ import mongoose, { Schema, type InferSchemaType } from "mongoose";
 const InventoryItemSchema = new Schema(
   {
     itemCode: { type: String, required: true, unique: true, uppercase: true, trim: true },
-    materialType: { type: String, required: true, trim: true },
-    sourceType: {
-      type: String,
-      enum: ["donated", "purchased", "factory-offcut", "returned-garment"],
-      required: true,
-    },
-    quantity: { type: Number, required: true, min: 0 },
-    unit: { type: String, enum: ["kg", "pieces", "meters"], default: "pieces" },
-    dateReceived: { type: Date, default: Date.now },
-    notes: { type: String, default: "" },
-    status: {
-      type: String,
-      enum: ["raw", "processing", "converted", "discarded"],
-      default: "raw",
-    },
+    image: { type: String, required: true, trim: true },
+    fabricCode: { type: String, required: true, trim: true },
+    category: { type: String, required: true, trim: true },
+    heightInches: { type: Number, required: true, min: 0 },
+    widthInches: { type: Number, required: true, min: 0 },
+    quantityPcs: { type: Number, required: true, min: 0 },
+    description: { type: String, default: "", trim: true },
   },
   { timestamps: true }
 );

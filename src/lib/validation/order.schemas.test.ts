@@ -11,10 +11,11 @@ const validItem = {
 
 const validAddress = {
   fullName: "Ada Lovelace",
-  phone: "0123456789",
+  phone: "01712345678",
   email: "ada@example.com",
   addressLine: "123 Main St",
   city: "Dhaka",
+  citySlug: "dhaka",
 };
 
 describe("createOrderSchema", () => {
@@ -22,7 +23,7 @@ describe("createOrderSchema", () => {
     const result = createOrderSchema.safeParse({
       items: [validItem],
       shippingAddress: validAddress,
-      paymentMethod: "cod",
+      paymentMethod: "card",
     });
     expect(result.success).toBe(true);
   });
@@ -31,7 +32,7 @@ describe("createOrderSchema", () => {
     const result = createOrderSchema.safeParse({
       items: [],
       shippingAddress: validAddress,
-      paymentMethod: "cod",
+      paymentMethod: "card",
     });
     expect(result.success).toBe(false);
   });
@@ -40,7 +41,7 @@ describe("createOrderSchema", () => {
     const result = createOrderSchema.safeParse({
       items: [{ ...validItem, size: "XXXXL" }],
       shippingAddress: validAddress,
-      paymentMethod: "cod",
+      paymentMethod: "card",
     });
     expect(result.success).toBe(false);
   });
@@ -54,13 +55,31 @@ describe("createOrderSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("defaults shippingAddress.area to 'other' when omitted", () => {
+  it("rejects cash on delivery now that Stripe is the only live checkout method", () => {
     const result = createOrderSchema.safeParse({
       items: [validItem],
       shippingAddress: validAddress,
       paymentMethod: "cod",
     });
-    expect(result.success && result.data.shippingAddress.area).toBe("other");
+    expect(result.success).toBe(false);
+  });
+
+  it("normalizes Bangladesh phone numbers", () => {
+    const result = createOrderSchema.safeParse({
+      items: [validItem],
+      shippingAddress: { ...validAddress, phone: "01712-345678" },
+      paymentMethod: "card",
+    });
+    expect(result.success && result.data.shippingAddress.phone).toBe("+8801712345678");
+  });
+
+  it("rejects non-Bangladesh phone numbers", () => {
+    const result = createOrderSchema.safeParse({
+      items: [validItem],
+      shippingAddress: { ...validAddress, phone: "+15555555555" },
+      paymentMethod: "card",
+    });
+    expect(result.success).toBe(false);
   });
 });
 

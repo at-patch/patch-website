@@ -6,6 +6,16 @@ import { MessageCircle, Send, X } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
+function formatChatError(message?: string) {
+  if (!message) return "Patch Assistant could not reply right now. Please try again in a moment.";
+  try {
+    const parsed = JSON.parse(message) as { message?: string };
+    return parsed.message || message;
+  } catch {
+    return message;
+  }
+}
+
 export function ChatWidget({ initialOpen = false }: { initialOpen?: boolean }) {
   const [open, setOpen] = useState(initialOpen);
   const [input, setInput] = useState("");
@@ -66,7 +76,7 @@ export function ChatWidget({ initialOpen = false }: { initialOpen?: boolean }) {
             )}
             {error && (
               <p className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">
-                {error.message || "Patch Assistant could not reply right now. Please try again in a moment."}
+                {formatChatError(error.message)}
               </p>
             )}
           </div>
