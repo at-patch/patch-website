@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import { Eye, ShoppingCart, Undo2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { formatPrice } from "@/lib/utils";
@@ -38,34 +39,47 @@ const PAYMENT_STATUS_TONE: Record<PaymentStatus, Tone> = {
 };
 
 export default function AdminOrdersPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "");
+  const [paymentFilter, setPaymentFilter] = useState(searchParams.get("paymentStatus") ?? "");
 
-  const load = async () => {
+  const load = useCallback(async (status: string, paymentStatus: string) => {
     setLoading(true);
-    const { data } = await axiosInstance.get<ApiListResponse<Order>>("/admin/orders");
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    if (paymentStatus) params.set("paymentStatus", paymentStatus);
+    const query = params.toString();
+    const { data } = await axiosInstance.get<ApiListResponse<Order>>(`/admin/orders${query ? `?${query}` : ""}`);
     setOrders(data.data);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
-    load();
-  }, []);
+    const params = new URLSearchParams();
+    if (statusFilter) params.set("status", statusFilter);
+    if (paymentFilter) params.set("paymentStatus", paymentFilter);
+    const query = params.toString();
+    router.replace(`/admin/orders${query ? `?${query}` : ""}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- filter changes intentionally trigger a remote list refresh
+    load(statusFilter, paymentFilter);
+  }, [load, paymentFilter, router, statusFilter]);
 
   const updateStatus = async (id: string, status: OrderStatus) => {
     await axiosInstance.patch(`/admin/orders/${id}`, { status });
-    load();
+    load(statusFilter, paymentFilter);
   };
 
   const updatePaymentStatus = async (id: string, paymentStatus: PaymentStatus) => {
     await axiosInstance.patch(`/admin/orders/${id}`, { paymentStatus });
-    load();
+    load(statusFilter, paymentFilter);
   };
 
   const saveTracking = async (id: string, tracking: { carrier: string; trackingNumber: string }) => {
     await axiosInstance.patch(`/admin/orders/${id}`, tracking);
-    load();
+    load(statusFilter, paymentFilter);
   };
 
   const refundOrder = async (order: Order) => {
@@ -77,12 +91,53 @@ export default function AdminOrdersPage() {
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "Refund failed."
       );
     }
-    load();
+    load(statusFilter, paymentFilter);
   };
 
   return (
     <div>
       <PageHeader icon={ShoppingCart} title="Orders" description="Track fulfillment from placed to delivered." />
+
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <label className="text-xs font-medium text-patch-ink-muted">
+          Order status
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+            className="mt-1 block min-w-44 rounded-xl border border-patch-line bg-patch-bg px-3 py-2 text-sm text-patch-ink outline-none focus:border-patch-ink"
+          >
+            <option value="">All orders</option>
+            {STATUSES.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+        <label className="text-xs font-medium text-patch-ink-muted">
+          Payment status
+          <select
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            className="mt-1 block min-w-44 rounded-xl border border-patch-line bg-patch-bg px-3 py-2 text-sm text-patch-ink outline-none focus:border-patch-ink"
+          >
+            <option value="">All payments</option>
+            {PAYMENT_STATUSES.map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
+        </label>
+        {(statusFilter || paymentFilter) && (
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter("");
+              setPaymentFilter("");
+            }}
+            className="mb-0.5 rounded-xl px-3 py-2 text-sm text-patch-ink-muted hover:bg-patch-ink/5 hover:text-patch-ink"
+          >
+            Reset filters
+          </button>
+        )}
+      </div>
 
       <TableCard>
         <thead className={tableHeadClass}>

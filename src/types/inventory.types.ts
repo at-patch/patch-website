@@ -8,6 +8,7 @@ export interface InventoryItem {
   widthInches: number;
   quantityPcs: number;
   description?: string;
+  productTags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -20,6 +21,7 @@ export interface InventoryItemInput {
   widthInches: number;
   quantityPcs: number;
   description?: string;
+  productTags?: string[];
 }
 
 export interface Pattern {
@@ -62,4 +64,51 @@ export interface ShippingCityInput {
   division?: string;
   shippingCost: number;
   isActive?: boolean;
+}
+
+export type ShippingZoneScope = "country" | "district";
+
+export interface ShippingZone {
+  _id: string;
+  countryCode: string;
+  countryName: string;
+  scope: ShippingZoneScope;
+  district?: string;
+  districtSlug?: string;
+  baseRate: number;
+  additionalKgRate: number;
+  currency: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShippingZoneInput {
+  countryCode: string;
+  countryName: string;
+  scope: ShippingZoneScope;
+  district?: string;
+  baseRate: number;
+  additionalKgRate: number;
+  currency?: string;
+  isActive?: boolean;
+}
+
+export interface ShippingDestination {
+  id: string;
+  countryCode: string;
+  countryName: string;
+  scope: ShippingZoneScope;
+  district?: string;
+  districtSlug?: string;
+  currency: string;
+  legacy?: boolean;
+}
+
+export interface ShippingQuote {
+  destination: ShippingDestination;
+  totalWeightKg: number;
+  chargeableWeightKg: number;
+  shippingCost: number;
+  currency: string;
 }

@@ -9,6 +9,7 @@ export interface CartLine {
   image?: string;
   size: string;
   color: string;
+  weightKg?: number;
 }
 
 interface CartState {
@@ -58,6 +59,7 @@ const cartSlice = createSlice({
         image: product.images[0],
         size,
         color,
+        weightKg: product.weightKg,
       });
     },
     removeFromCart: (state, action: PayloadAction<RemoveFromCartPayload>) => {

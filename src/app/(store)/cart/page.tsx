@@ -7,13 +7,15 @@ import { X } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCoupon, getCartLineKey, removeFromCart, setCoupon } from "@/store/slices/cartSlice";
-import { formatPrice, isValidImageSrc } from "@/lib/utils";
+import { isValidImageSrc } from "@/lib/utils";
+import { useCurrency } from "@/components/store/CurrencyProvider";
 import type { ApiResponse, CouponValidationResult } from "@/types";
 
 export default function CartPage() {
   const lines = useAppSelector((state) => state.cart.lines);
   const appliedCoupon = useAppSelector((state) => state.cart.couponCode);
   const dispatch = useAppDispatch();
+  const { format } = useCurrency();
   const [coupon, setCouponInput] = useState("");
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
@@ -106,7 +108,7 @@ export default function CartPage() {
                   {line.size}{line.color ? ` / ${line.color}` : ""}
                 </p>
               </div>
-              <p className="shrink-0 text-sm text-patch-ink">{formatPrice(line.price)}</p>
+              <p className="shrink-0 text-sm text-patch-ink">{format(line.price)}</p>
               <button
                 onClick={() => dispatch(removeFromCart({ productId: line.productId, size: line.size, color: line.color }))}
                 aria-label={`Remove ${line.name}`}
@@ -151,21 +153,21 @@ export default function CartPage() {
           <div className="mt-6 space-y-2 border-t border-patch-line pt-4 text-sm">
             <div className="flex justify-between text-patch-ink-muted">
               <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
+              <span>{format(subtotal)}</span>
             </div>
             {effectiveDiscount > 0 && (
               <div className="flex justify-between text-patch-accent">
                 <span>Discount ({appliedCoupon})</span>
-                <span>-{formatPrice(effectiveDiscount)}</span>
+                <span>-{format(effectiveDiscount)}</span>
               </div>
             )}
             <div className="flex justify-between text-patch-ink-muted">
               <span>Shipping</span>
-              <span>{shipping === 0 ? "Calculated at checkout" : formatPrice(shipping)}</span>
+              <span>{shipping === 0 ? "Calculated at checkout" : format(shipping)}</span>
             </div>
             <div className="flex justify-between border-t border-patch-line pt-2 text-base font-medium text-patch-ink">
               <span>Total</span>
-              <span>{formatPrice(subtotal - effectiveDiscount)}</span>
+              <span>{format(subtotal - effectiveDiscount)}</span>
             </div>
           </div>
 

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
-import ShippingCityModel from "@/lib/models/ShippingCity";
 import { claimStockForItem, releaseStockForItem } from "@/lib/inventory";
 import { claimCoupon, releaseCouponClaim } from "@/lib/coupons";
 import { sendOrderConfirmationEmail } from "@/lib/email";
@@ -11,6 +10,8 @@ import { generateOrderNumber } from "@/lib/utils";
 import { requireCustomer } from "@/lib/require-customer";
 import { parseJsonBody } from "@/lib/validation";
 import { createOrderSchema } from "@/lib/validation/order.schemas";
+import { resolveShippingForWeight } from "@/lib/shipping-quote";
+import { convertFromBase, getCurrencySnapshot } from "@/lib/currency";
 import type { CreateOrderInput } from "@/types";
 
 type ClaimedItem = {
@@ -20,7 +21,9 @@ type ClaimedItem = {
 };
 
 async function claimProductStock(item: CreateOrderInput["items"][number]) {
-  const product = await ProductModel.findById(item.product).select("price").lean();
+  const product = await ProductModel.findById(item.product)
+    .select("sku name price images weightKg")
+    .lean();
   if (!product) return null;
 
   const normalizedColor = item.color?.trim() ?? "";
@@ -29,6 +32,17 @@ async function claimProductStock(item: CreateOrderInput["items"][number]) {
 
   return {
     price: product.price,
+    weightKg: product.weightKg,
+    item: {
+      product: item.product,
+      sku: product.sku,
+      name: product.name,
+      price: product.price,
+      image: product.images?.[0] ?? item.image,
+      size: item.size,
+      color: normalizedColor,
+      weightKg: product.weightKg,
+    },
     claim: {
       productId: String(item.product),
       size: item.size,
@@ -51,6 +65,8 @@ export async function POST(request: NextRequest) {
 
   const claims: ClaimedItem[] = [];
   let subtotal = 0;
+  let totalWeightKg = 0;
+  const orderItems: CreateOrderInput["items"] = [];
   let claimedCouponCode: string | null = null;
 
   const revertAllClaims = async () => {
@@ -72,6 +88,15 @@ export async function POST(request: NextRequest) {
 
       claims.push(claimed.claim);
       subtotal += claimed.price;
+      if (!claimed.weightKg || claimed.weightKg <= 0) {
+        await revertAllClaims();
+        return NextResponse.json(
+          { success: false, message: `${claimed.item.name} does not have a valid shipping weight.` },
+          { status: 400 }
+        );
+      }
+      totalWeightKg += claimed.weightKg;
+      orderItems.push(claimed.item);
     }
 
     let discount = 0;
@@ -85,32 +110,66 @@ export async function POST(request: NextRequest) {
       discount = coupon.discount;
     }
 
-    const shippingCity = await ShippingCityModel.findOne({
-      slug: body.shippingAddress.citySlug,
-      isActive: true,
-    }).lean();
+    const shipping = await resolveShippingForWeight(
+      {
+        countryCode: body.shippingAddress.countryCode ?? "BD",
+        districtSlug: body.shippingAddress.districtSlug ?? body.shippingAddress.citySlug,
+      },
+      totalWeightKg
+    );
 
-    if (!shippingCity) {
+    if (!shipping) {
       await revertAllClaims();
-      return NextResponse.json({ success: false, message: "Select an active shipping city." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "Shipping is not available for this destination." },
+        { status: 400 }
+      );
+    }
+    if (shipping.currency !== "BDT") {
+      await revertAllClaims();
+      return NextResponse.json(
+        { success: false, message: "This shipping currency is not available at checkout yet." },
+        { status: 400 }
+      );
     }
 
-    const shippingCost = shippingCity.shippingCost;
+    const currencySnapshot = await getCurrencySnapshot(body.currency ?? "BDT");
+    const convertedItems = orderItems.map((item) => ({
+      ...item,
+      basePrice: item.price,
+      price: convertFromBase(item.price, currencySnapshot.rate),
+    }));
+    const convertedSubtotal = convertedItems.reduce((sum, item) => sum + item.price, 0);
+    const convertedShippingCost = convertFromBase(shipping.shippingCost, currencySnapshot.rate);
+    const convertedDiscount = convertFromBase(discount, currencySnapshot.rate);
 
     const order = await OrderModel.create({
       orderNumber: generateOrderNumber(),
       customer: customerId ?? undefined,
-      items: body.items,
-      subtotal,
-      shippingCost,
+      items: convertedItems,
+      subtotal: convertedSubtotal,
+      baseSubtotal: subtotal,
+      shippingCost: convertedShippingCost,
+      baseShippingCost: shipping.shippingCost,
+      totalWeightKg: shipping.totalWeightKg,
+      chargeableWeightKg: shipping.chargeableWeightKg,
+      shippingRuleId: shipping.shippingRuleId,
       couponCode: claimedCouponCode ?? "",
-      discount,
-      total: subtotal + shippingCost - discount,
+      discount: convertedDiscount,
+      baseDiscount: discount,
+      total: convertedSubtotal + convertedShippingCost - convertedDiscount,
+      baseTotal: subtotal + shipping.shippingCost - discount,
+      baseCurrency: "BDT",
+      currency: currencySnapshot.currency,
+      exchangeRate: currencySnapshot.rate,
+      exchangeRateTimestamp: currencySnapshot.timestamp,
+      exchangeRateSource: currencySnapshot.source,
       shippingAddress: {
         ...body.shippingAddress,
-        city: shippingCity.name,
-        citySlug: shippingCity.slug,
-        shippingCost,
+        countryCode: shipping.destination.countryCode,
+        district: shipping.destination.district ?? "",
+        districtSlug: shipping.destination.districtSlug ?? "",
+        shippingCost: convertedShippingCost,
       },
       paymentMethod: body.paymentMethod,
     });

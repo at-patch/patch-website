@@ -3,6 +3,7 @@ import {
   inventoryItemCreateSchema,
   patternCreateSchema,
   shippingCityCreateSchema,
+  shippingZoneCreateSchema,
 } from "./admin-material.schemas";
 
 describe("inventoryItemCreateSchema", () => {
@@ -15,6 +16,7 @@ describe("inventoryItemCreateSchema", () => {
       widthInches: 19,
       quantityPcs: 8,
       description: "Factory offcut",
+      productTags: ["64f100000000000000000001"],
     });
     expect(result.success).toBe(true);
   });
@@ -29,6 +31,39 @@ describe("inventoryItemCreateSchema", () => {
       quantityPcs: -1,
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("shippingZoneCreateSchema", () => {
+  it("accepts international country-wide and Bangladesh district rules", () => {
+    expect(shippingZoneCreateSchema.safeParse({
+      countryCode: "US",
+      countryName: "United States",
+      scope: "country",
+      baseRate: 2000,
+      additionalKgRate: 500,
+      currency: "BDT",
+    }).success).toBe(true);
+
+    expect(shippingZoneCreateSchema.safeParse({
+      countryCode: "BD",
+      countryName: "Bangladesh",
+      scope: "district",
+      district: "Dhaka",
+      baseRate: 80,
+      additionalKgRate: 30,
+      currency: "BDT",
+    }).success).toBe(true);
+  });
+
+  it("rejects a country-wide Bangladesh rule", () => {
+    expect(shippingZoneCreateSchema.safeParse({
+      countryCode: "BD",
+      countryName: "Bangladesh",
+      scope: "country",
+      baseRate: 80,
+      additionalKgRate: 30,
+    }).success).toBe(false);
   });
 });
 

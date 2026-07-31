@@ -3,13 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Plus, Sparkle } from "lucide-react";
-import { formatPrice, isValidImageSrc } from "@/lib/utils";
+import { isValidImageSrc } from "@/lib/utils";
+import { useCurrency } from "@/components/store/CurrencyProvider";
 import { useAppDispatch } from "@/store/hooks";
 import { addToCart } from "@/store/slices/cartSlice";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
   const dispatch = useAppDispatch();
+  const { format } = useCurrency();
   const images = product.images.filter(isValidImageSrc);
   const secondImage = images[1] ?? images[0];
 
@@ -64,7 +66,7 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-xs text-patch-ink-muted">{product.materials.join(", ")}</p>
         </div>
         <p className="whitespace-nowrap text-sm font-bold text-patch-ink">
-          {formatPrice(product.price, product.currency)}
+          {format(product.price)}
         </p>
       </div>
     </Link>

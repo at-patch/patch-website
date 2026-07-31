@@ -15,9 +15,11 @@ export interface OrderItem {
   sku: string;
   name: string;
   price: number;
+  basePrice?: number;
   image?: string;
   size: string;
   color?: string;
+  weightKg?: number;
 }
 
 export interface ShippingAddress {
@@ -27,6 +29,9 @@ export interface ShippingAddress {
   addressLine: string;
   city: string;
   citySlug?: string;
+  countryCode?: string;
+  district?: string;
+  districtSlug?: string;
   shippingCost?: number;
   notes?: string;
 }
@@ -37,9 +42,19 @@ export interface Order {
   customer?: string;
   items: OrderItem[];
   subtotal: number;
+  baseSubtotal?: number;
   total: number;
+  baseTotal?: number;
   shippingCost?: number;
+  baseShippingCost?: number;
+  baseCurrency?: string;
   currency: string;
+  totalWeightKg?: number;
+  chargeableWeightKg?: number;
+  shippingRuleId?: string;
+  exchangeRate?: number;
+  exchangeRateTimestamp?: string;
+  exchangeRateSource?: string;
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
@@ -47,6 +62,7 @@ export interface Order {
   stripePaymentIntentId?: string;
   couponCode?: string;
   discount?: number;
+  baseDiscount?: number;
   trackingNumber?: string;
   carrier?: string;
   createdAt: string;
@@ -57,5 +73,6 @@ export interface CreateOrderInput {
   items: OrderItem[];
   shippingAddress: ShippingAddress;
   paymentMethod: PaymentMethod;
+  currency?: "BDT" | "USD" | "EUR" | "GBP" | "CNY";
   couponCode?: string;
 }

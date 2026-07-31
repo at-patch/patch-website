@@ -18,6 +18,7 @@ import {
   tableRowClass,
 } from "@/components/admin/ui";
 import type { ApiListResponse, ShippingCity } from "@/types";
+import { ShippingZonesPanel } from "@/components/admin/ShippingZonesPanel";
 
 const EMPTY_FORM = {
   name: "",
@@ -93,7 +94,7 @@ export default function UtilitiesPage() {
       <PageHeader
         icon={Settings2}
         title="Utilities"
-        description="Manage shipping cities and delivery charges used during checkout."
+        description="Manage dynamic shipping rules and the legacy city rates currently used during checkout."
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" icon={MapPin} onClick={seedCities}>
@@ -105,6 +106,15 @@ export default function UtilitiesPage() {
           </div>
         }
       />
+
+      <ShippingZonesPanel />
+
+      <div className="mt-12 border-t border-patch-line pt-8">
+        <p className="font-heading text-lg font-semibold text-patch-ink">Legacy checkout city rates</p>
+        <p className="mt-1 text-sm text-patch-ink-muted">
+          These remain active until checkout is switched to the new country/district weight rules.
+        </p>
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative max-w-sm flex-1">

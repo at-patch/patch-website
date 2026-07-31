@@ -6,10 +6,11 @@ import { useState } from "react";
 import { BookOpen, Home, Mail, Newspaper, Search, ShoppingBag, Store, User, X } from "lucide-react";
 import { useAppSelector } from "@/store/hooks";
 import { AnnouncementBar } from "./AnnouncementBar";
+import { CurrencySelector } from "./CurrencySelector";
 
 const NAV_LINKS = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/shop", label: "Shop", icon: Store },
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/", label: "Shop", icon: Store },
   { href: "/story", label: "Our Story", icon: BookOpen },
   { href: "/journal", label: "Journal", icon: Newspaper },
   { href: "/contact", label: "Contact", icon: Mail },
@@ -55,6 +56,7 @@ export function Header() {
           </Link>
 
           <div className="flex items-center justify-end gap-4">
+            <CurrencySelector />
             <button
               onClick={() => setSearchOpen((v) => !v)}
               aria-label="Search"

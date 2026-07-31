@@ -17,8 +17,10 @@ export interface Product {
   description: string;
   story: string;
   images: string[];
+  sizeChartImage?: string;
   price: number;
   currency: string;
+  weightKg?: number;
   category: ProductCategory;
   materials: string[];
   size: string;
@@ -46,8 +48,10 @@ export interface ProductInput {
   description: string;
   story?: string;
   images?: string[];
+  sizeChartImage?: string;
   price: number;
   currency?: string;
+  weightKg: number;
   category: ProductCategory;
   materials?: string[];
   size?: string;

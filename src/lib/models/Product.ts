@@ -18,8 +18,10 @@ const ProductSchema = new Schema(
     description: { type: String, required: true },
     story: { type: String, default: "" },
     images: { type: [String], default: [] },
+    sizeChartImage: { type: String, default: "", trim: true },
     price: { type: Number, required: true, min: 0 },
     currency: { type: String, default: "BDT" },
+    weightKg: { type: Number, min: 0 },
     category: {
       type: String,
       required: true,

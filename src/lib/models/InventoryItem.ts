@@ -10,9 +10,13 @@ const InventoryItemSchema = new Schema(
     widthInches: { type: Number, required: true, min: 0 },
     quantityPcs: { type: Number, required: true, min: 0 },
     description: { type: String, default: "", trim: true },
+    productTags: { type: [Schema.Types.ObjectId], ref: "Product", default: [] },
   },
   { timestamps: true }
 );
+
+InventoryItemSchema.index({ productTags: 1 });
+InventoryItemSchema.index({ fabricCode: 1, category: 1 });
 
 export type InventoryItem = InferSchemaType<typeof InventoryItemSchema>;
 
