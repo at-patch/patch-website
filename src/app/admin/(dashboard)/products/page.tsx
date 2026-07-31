@@ -14,6 +14,7 @@ import {
   Pencil,
   Plus,
   Ruler,
+  Scale,
   Shirt,
   Tags,
   Trash2,
@@ -73,7 +74,9 @@ type ProductForm = {
   description: string;
   story: string;
   images: string[];
+  sizeChartImage: string;
   price: string;
+  weightKg: string;
   category: ProductCategory;
   materials: string;
   rarity: ProductRarity;
@@ -100,7 +103,9 @@ function createEmptyForm(category = ""): ProductForm {
     description: "",
     story: "",
     images: [] as string[],
+    sizeChartImage: "",
     price: "",
+    weightKg: "",
     category,
     materials: "",
     rarity: "multi-quantity" as ProductRarity,
@@ -221,6 +226,7 @@ export default function AdminProductsPage() {
     const payload = {
       ...form,
       price: Number(form.price),
+      weightKg: Number(form.weightKg),
       materials: form.materials.split(",").map((s) => s.trim()).filter(Boolean),
       size: form.rarity === "one-of-one" ? form.size : sanitizedVariants[0]?.size ?? DEFAULT_SIZE,
       variants: form.rarity === "multi-quantity" ? sanitizedVariants : [],
@@ -252,7 +258,9 @@ export default function AdminProductsPage() {
       description: p.description,
       story: p.story ?? "",
       images: p.images ?? [],
+      sizeChartImage: p.sizeChartImage ?? "",
       price: String(p.price),
+      weightKg: p.weightKg ? String(p.weightKg) : "",
       category: p.category,
       materials: (p.materials ?? []).join(", "),
       rarity,
@@ -327,6 +335,14 @@ export default function AdminProductsPage() {
 
           <FormSection title="Pricing & details">
             <FormInput icon={Wallet} label="Price (BDT)" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} required />
+            <FormInput
+              icon={Scale}
+              label="Weight (kg)"
+              type="number"
+              value={form.weightKg}
+              onChange={(v) => setForm({ ...form, weightKg: v })}
+              required
+            />
             <FormSelect icon={Package} label="Product rarity" value={form.rarity} onChange={(v) => setForm({ ...form, rarity: v as ProductRarity })}>
               <option value="multi-quantity">Multiple quantity</option>
               <option value="one-of-one">One of a kind (1-of-1)</option>
@@ -352,6 +368,14 @@ export default function AdminProductsPage() {
           <FormSection title="Media">
             <div className="sm:col-span-2">
               <ImageUploader images={form.images} onChange={(images) => setForm({ ...form, images })} />
+            </div>
+            <div className="sm:col-span-2">
+              <ImageUploader
+                label="Size chart (optional)"
+                images={form.sizeChartImage ? [form.sizeChartImage] : []}
+                onChange={(images) => setForm({ ...form, sizeChartImage: images[0] ?? "" })}
+                multiple={false}
+              />
             </div>
           </FormSection>
 

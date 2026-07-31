@@ -15,9 +15,11 @@ import {
   hydrateProductsWithSampleImages,
   topUpProducts,
 } from "@/lib/sample-catalog";
-import { formatPrice, getTotalQuantity } from "@/lib/utils";
+import { getTotalQuantity } from "@/lib/utils";
 import { SITE_URL } from "@/lib/constants";
 import type { Product } from "@/types";
+import Image from "next/image";
+import { Money } from "@/components/store/CurrencyProvider";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +130,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <h1 className="font-heading mt-3 text-3xl font-extrabold tracking-tight text-patch-ink">
             {product.name}
           </h1>
-          <p className="mt-1 text-lg font-bold text-patch-ink">{formatPrice(product.price, product.currency)}</p>
+          <p className="mt-1 text-lg font-bold text-patch-ink"><Money amount={product.price} /></p>
 
           <p className="mt-2 text-sm font-semibold text-patch-accent-3">
             {product.status === "sold"
@@ -178,8 +180,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 },
                 {
                   title: "Shipping & Returns",
-                  body: "Ships within Dhaka in 2–4 business days, nationwide in 4–7 business days. Exchanges are size/fit only within 7 days — some styles are limited-run, so restocks aren't guaranteed. No cash refunds or returns.",
+                  body: "Shipping is calculated at checkout from your destination and the cart's chargeable weight. Bangladesh rates are district-based; enabled international destinations use a country-wide rate. Exchanges are size/fit only within 7 days — some styles are limited-run, so restocks aren't guaranteed. No cash refunds or returns.",
                 },
+                ...(product.sizeChartImage
+                  ? [
+                      {
+                        title: "Size Chart",
+                        body: (
+                          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-patch-bg-alt">
+                            <Image
+                              src={product.sizeChartImage}
+                              alt={`${product.name} size chart`}
+                              fill
+                              sizes="(max-width: 640px) 100vw, 50vw"
+                              className="object-contain"
+                            />
+                          </div>
+                        ),
+                      },
+                    ]
+                  : []),
               ]}
             />
           </div>

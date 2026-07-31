@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import type { Category } from "@/types";
+import { useCurrency } from "@/components/store/CurrencyProvider";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
@@ -24,6 +25,7 @@ export function ShopFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { format } = useCurrency();
 
   const activeCategory = searchParams.get("category");
   const activeSize = searchParams.get("size");
@@ -100,8 +102,8 @@ export function ShopFilters({
           />
         </div>
         <div className="mt-2 flex justify-between text-xs text-patch-ink-muted">
-          <span>{minPrice} BDT</span>
-          <span>{maxPriceParam} BDT</span>
+          <span>{format(Number(minPrice))}</span>
+          <span>{format(Number(maxPriceParam))}</span>
         </div>
       </div>
 

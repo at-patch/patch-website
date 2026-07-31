@@ -58,7 +58,13 @@ export async function POST(request: NextRequest) {
                 {
                   price_data: {
                     currency: order.currency.toLowerCase(),
-                    product_data: { name: `Shipping to ${order.shippingAddress.city}` },
+                    product_data: {
+                      name: `Shipping to ${
+                        order.shippingAddress.district ||
+                        order.shippingAddress.city ||
+                        order.shippingAddress.countryCode
+                      }`,
+                    },
                     unit_amount: Math.round(order.shippingCost * 100),
                   },
                   quantity: 1,

@@ -11,7 +11,7 @@ const validItem = {
 
 const validAddress = {
   fullName: "Ada Lovelace",
-  phone: "01712345678",
+  phone: "+8801712345678",
   email: "ada@example.com",
   addressLine: "123 Main St",
   city: "Dhaka",
@@ -64,19 +64,28 @@ describe("createOrderSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("normalizes Bangladesh phone numbers", () => {
+  it("accepts international-format Bangladesh phone numbers", () => {
     const result = createOrderSchema.safeParse({
       items: [validItem],
-      shippingAddress: { ...validAddress, phone: "01712-345678" },
+      shippingAddress: { ...validAddress, phone: "+880 1712-345678" },
       paymentMethod: "card",
     });
     expect(result.success && result.data.shippingAddress.phone).toBe("+8801712345678");
   });
 
-  it("rejects non-Bangladesh phone numbers", () => {
+  it("accepts international phone numbers for international shipping", () => {
     const result = createOrderSchema.safeParse({
       items: [validItem],
       shippingAddress: { ...validAddress, phone: "+15555555555" },
+      paymentMethod: "card",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects phone numbers without a country code", () => {
+    const result = createOrderSchema.safeParse({
+      items: [validItem],
+      shippingAddress: { ...validAddress, phone: "01712345678" },
       paymentMethod: "card",
     });
     expect(result.success).toBe(false);

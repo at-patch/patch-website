@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatPrice } from "@/lib/utils";
 import { AddToCartButton } from "@/components/store/AddToCartButton";
+import { useCurrency } from "@/components/store/CurrencyProvider";
 import type { Product } from "@/types";
 
 export function StickyAddToCartBar({ product }: { product: Product }) {
   const [visible, setVisible] = useState(false);
+  const { format } = useCurrency();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function StickyAddToCartBar({ product }: { product: Product }) {
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-patch-line bg-patch-bg px-4 py-3 sm:hidden">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-patch-ink">{product.name}</p>
-            <p className="text-xs text-patch-ink-muted">{formatPrice(product.price, product.currency)}</p>
+            <p className="text-xs text-patch-ink-muted">{format(product.price)}</p>
           </div>
           <div className="w-36 shrink-0">
             {product.rarity === "multi-quantity" ? (

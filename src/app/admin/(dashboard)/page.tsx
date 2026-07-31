@@ -35,13 +35,19 @@ async function getRevenueStats() {
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          revenue: { $sum: "$total" },
+          revenue: { $sum: { $ifNull: ["$baseTotal", "$total"] } },
         },
       },
     ]),
     OrderModel.aggregate([
       { $match: { paymentStatus: "paid" } },
-      { $group: { _id: null, revenue: { $sum: "$total" }, orders: { $sum: 1 } } },
+      {
+        $group: {
+          _id: null,
+          revenue: { $sum: { $ifNull: ["$baseTotal", "$total"] } },
+          orders: { $sum: 1 },
+        },
+      },
     ]),
     OrderModel.aggregate([
       { $match: { paymentStatus: "paid" } },
@@ -51,7 +57,7 @@ async function getRevenueStats() {
           _id: "$items.product",
           name: { $first: "$items.name" },
           qty: { $sum: 1 },
-          revenue: { $sum: "$items.price" },
+          revenue: { $sum: { $ifNull: ["$items.basePrice", "$items.price"] } },
         },
       },
       { $sort: { revenue: -1 } },

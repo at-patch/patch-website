@@ -4,10 +4,19 @@ import { ChevronDown, CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import axiosInstance from "@/lib/axios";
-import { cn, formatPrice } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { useCurrency } from "@/components/store/CurrencyProvider";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCoupon } from "@/store/slices/cartSlice";
-import type { ApiListResponse, ApiResponse, CouponValidationResult, Order, PaymentMethod, ShippingCity } from "@/types";
+import type {
+  ApiListResponse,
+  ApiResponse,
+  CouponValidationResult,
+  Order,
+  PaymentMethod,
+  ShippingDestination,
+  ShippingQuote,
+} from "@/types";
 
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof CreditCard }[] = [
   { value: "card", label: "Card (Visa / Mastercard)", icon: CreditCard },
@@ -50,52 +59,102 @@ export default function CheckoutPage() {
   const lines = useAppSelector((state) => state.cart.lines);
   const couponCode = useAppSelector((state) => state.cart.couponCode);
   const dispatch = useAppDispatch();
+  const { currency, format } = useCurrency();
 
   const [openSection, setOpenSection] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState({
     fullName: "",
-    phoneLocal: "",
+    phone: "",
     email: "",
     addressLine: "",
-    citySlug: "",
+    countryCode: "BD",
+    districtSlug: "",
+    city: "",
     notes: "",
   });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
-  const [cities, setCities] = useState<ShippingCity[]>([]);
-  const [citiesLoading, setCitiesLoading] = useState(true);
+  const [destinations, setDestinations] = useState<ShippingDestination[]>([]);
+  const [destinationsLoading, setDestinationsLoading] = useState(true);
+  const [quoteState, setQuoteState] = useState<{ key: string; quote: ShippingQuote } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
 
   const subtotal = lines.reduce((sum, l) => sum + l.price, 0);
-  const selectedCity = cities.find((city) => city.slug === form.citySlug);
-  const shippingCost = selectedCity?.shippingCost ?? 0;
+  const countries = Array.from(
+    new Map(destinations.map((destination) => [destination.countryCode, destination])).values()
+  );
+  const districts = destinations.filter(
+    (destination) => destination.countryCode === form.countryCode && destination.scope === "district"
+  );
+  const selectedDestination =
+    form.countryCode === "BD"
+      ? districts.find((destination) => destination.districtSlug === form.districtSlug)
+      : destinations.find(
+          (destination) => destination.countryCode === form.countryCode && destination.scope === "country"
+        );
+  const quoteKey = `${selectedDestination?.id ?? ""}:${lines.map((line) => line.productId).join(",")}`;
+  const quote = quoteState?.key === quoteKey ? quoteState.quote : null;
+  const shippingCost = quote?.shippingCost ?? 0;
   const effectiveDiscount = couponCode ? discount : 0;
   const total = subtotal + shippingCost - effectiveDiscount;
 
   useEffect(() => {
     let cancelled = false;
     axiosInstance
-      .get<ApiListResponse<ShippingCity>>("/shipping-cities")
+      .get<ApiListResponse<ShippingDestination>>("/shipping-destinations")
       .then(({ data }) => {
         if (cancelled) return;
-        setCities(data.data);
+        setDestinations(data.data);
         setForm((current) => {
-          if (current.citySlug || data.data.length === 0) return current;
-          const dhaka = data.data.find((city) => city.slug === "dhaka");
-          return { ...current, citySlug: (dhaka ?? data.data[0]).slug };
+          if (data.data.length === 0) return current;
+          const dhaka = data.data.find(
+            (destination) => destination.countryCode === "BD" && destination.districtSlug === "dhaka"
+          );
+          const first = dhaka ?? data.data[0];
+          return {
+            ...current,
+            countryCode: first.countryCode,
+            districtSlug: first.districtSlug ?? "",
+            city: first.district ?? current.city,
+          };
         });
       })
       .catch(() => {
-        if (!cancelled) setError("Shipping cities are not configured yet. Please contact Patch before checkout.");
+        if (!cancelled) setError("Shipping destinations are not configured yet. Please contact Patch before checkout.");
       })
       .finally(() => {
-        if (!cancelled) setCitiesLoading(false);
+        if (!cancelled) setDestinationsLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!selectedDestination || lines.length === 0) return;
+    let cancelled = false;
+    const requestKey = quoteKey;
+    axiosInstance
+      .post<ApiResponse<ShippingQuote>>("/shipping-quote", {
+        productIds: lines.map((line) => line.productId),
+        countryCode: selectedDestination.countryCode,
+        districtSlug: selectedDestination.districtSlug,
+      })
+      .then(({ data }) => {
+        if (!cancelled) setQuoteState({ key: requestKey, quote: data.data });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(
+          (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+            "Unable to calculate shipping."
+        );
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lines, quoteKey, selectedDestination]);
 
   useEffect(() => {
     if (!couponCode || subtotal === 0) return;
@@ -120,9 +179,9 @@ export default function CheckoutPage() {
     setSubmitting(true);
     setError(null);
 
-    if (!selectedCity) {
+    if (!selectedDestination || !quote) {
       setSubmitting(false);
-      setError("Select a shipping city before placing your order.");
+      setError("Select a shipping destination and wait for the shipping quote.");
       return;
     }
 
@@ -139,14 +198,18 @@ export default function CheckoutPage() {
         })),
         shippingAddress: {
           fullName: form.fullName,
-          phone: `+880${form.phoneLocal.replace(/\D/g, "")}`,
+          phone: form.phone,
           email: form.email,
           addressLine: form.addressLine,
-          city: selectedCity.name,
-          citySlug: selectedCity.slug,
+          city: form.city,
+          citySlug: form.districtSlug,
+          countryCode: form.countryCode,
+          district: selectedDestination.district,
+          districtSlug: selectedDestination.districtSlug,
           notes: form.notes,
         },
         paymentMethod,
+        currency,
         couponCode: couponCode || undefined,
       });
 
@@ -182,39 +245,86 @@ export default function CheckoutPage() {
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Full name" value={form.fullName} onChange={(v) => setForm({ ...form, fullName: v })} required />
-              <PhoneField value={form.phoneLocal} onChange={(v) => setForm({ ...form, phoneLocal: v.replace(/\D/g, "").slice(0, 10) })} />
+              <PhoneField value={form.phone} onChange={(value) => setForm({ ...form, phone: value })} />
             </div>
             <Field label="Email" type="email" value={form.email} onChange={(v) => setForm({ ...form, email: v })} required />
             <Field label="Address" value={form.addressLine} onChange={(v) => setForm({ ...form, addressLine: v })} required />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-medium text-patch-ink-muted">Country</label>
+                <div className="relative mt-1">
+                  <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-patch-ink-muted" />
+                  <select
+                    value={form.countryCode}
+                    onChange={(event) => {
+                      const countryCode = event.target.value;
+                      const firstDistrict = destinations.find(
+                        (destination) => destination.countryCode === countryCode && destination.scope === "district"
+                      );
+                      setForm({
+                        ...form,
+                        countryCode,
+                        districtSlug: firstDistrict?.districtSlug ?? "",
+                        city: firstDistrict?.district ?? "",
+                      });
+                    }}
+                    disabled={destinationsLoading || countries.length === 0}
+                    required
+                    className="w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 pl-9 text-sm outline-none focus:border-patch-ink disabled:opacity-60"
+                  >
+                    {countries.map((country) => (
+                      <option key={country.countryCode} value={country.countryCode} className="bg-patch-bg">
+                        {country.countryName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {form.countryCode === "BD" && (
+                <div>
+                  <label className="text-xs font-medium text-patch-ink-muted">District</label>
+                  <select
+                    value={form.districtSlug}
+                    onChange={(event) => {
+                      const destination = districts.find(
+                        (item) => item.districtSlug === event.target.value
+                      );
+                      setForm({
+                        ...form,
+                        districtSlug: event.target.value,
+                        city: destination?.district ?? form.city,
+                      });
+                    }}
+                    disabled={destinationsLoading || districts.length === 0}
+                    required
+                    className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm outline-none focus:border-patch-ink disabled:opacity-60"
+                  >
+                    {districts.map((destination) => (
+                      <option key={destination.id} value={destination.districtSlug} className="bg-patch-bg">
+                        {destination.district}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <div>
-              <label className="text-xs font-medium text-patch-ink-muted">City</label>
+              <label className="text-xs font-medium text-patch-ink-muted">City / locality</label>
               <div className="relative mt-1">
                 <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-patch-ink-muted" />
-                <select
-                  value={form.citySlug}
-                  onChange={(e) => setForm({ ...form, citySlug: e.target.value })}
-                  disabled={citiesLoading || cities.length === 0}
+                <input
+                  value={form.city}
+                  onChange={(event) => setForm({ ...form, city: event.target.value })}
                   required
-                  className="w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 pl-9 text-sm outline-none focus:border-patch-ink disabled:opacity-60"
-                >
-                  {cities.length === 0 ? (
-                    <option value="" className="bg-patch-bg">
-                      No shipping cities configured
-                    </option>
-                  ) : (
-                    cities.map((city) => (
-                      <option key={city._id} value={city.slug} className="bg-patch-bg">
-                        {city.name}{city.division ? `, ${city.division}` : ""} — {formatPrice(city.shippingCost)}
-                      </option>
-                    ))
-                  )}
-                </select>
+                  placeholder="City or locality"
+                  className="w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 pl-9 text-sm outline-none focus:border-patch-ink"
+                />
               </div>
             </div>
             <button
               type="button"
               onClick={() => setOpenSection(2)}
-              disabled={!selectedCity}
+              disabled={!selectedDestination || !quote || !form.city}
               className="rounded-full bg-patch-ink px-5 py-2 text-sm font-medium text-patch-bg disabled:opacity-50"
             >
               Continue to Payment
@@ -266,28 +376,41 @@ export default function CheckoutPage() {
                       ({line.size}{line.color ? ` / ${line.color}` : ""})
                     </span>
                   </span>
-                  <span className="text-patch-ink-muted">{formatPrice(line.price)}</span>
+                  <span className="text-patch-ink-muted">{format(line.price)}</span>
                 </div>
               ))}
             </div>
             <div className="space-y-1 border-t border-patch-line pt-4">
               <div className="flex items-center justify-between text-sm text-patch-ink-muted">
                 <span>Subtotal</span>
-                <span>{formatPrice(subtotal)}</span>
+                <span>{format(subtotal)}</span>
               </div>
               <div className="flex items-center justify-between text-sm text-patch-ink-muted">
-                <span>Shipping{selectedCity ? ` (${selectedCity.name})` : ""}</span>
-                <span>{formatPrice(shippingCost)}</span>
+                <span>
+                  Shipping
+                  {selectedDestination
+                    ? ` (${selectedDestination.district || selectedDestination.countryName})`
+                    : ""}
+                </span>
+                <span>{quote ? format(shippingCost) : "Calculating..."}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-patch-ink-muted">
+                <span>Cart weight</span>
+                <span>
+                  {quote
+                    ? `${quote.totalWeightKg.toFixed(2)} kg (${quote.chargeableWeightKg} kg chargeable)`
+                    : "Waiting for quote"}
+                </span>
               </div>
               {effectiveDiscount > 0 && (
                 <div className="flex items-center justify-between text-sm text-patch-accent">
                   <span>Discount ({couponCode})</span>
-                  <span>-{formatPrice(effectiveDiscount)}</span>
+                  <span>-{format(effectiveDiscount)}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium text-patch-ink">Total</p>
-                <p className="text-lg font-semibold text-patch-ink">{formatPrice(total)}</p>
+                <p className="text-lg font-semibold text-patch-ink">{format(total)}</p>
               </div>
             </div>
             <p className="text-xs text-patch-ink-muted">
@@ -302,7 +425,7 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={submitting || !selectedCity}
+              disabled={submitting || !selectedDestination || !quote || !form.city}
               className="hidden w-full rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg hover:opacity-90 disabled:opacity-50 sm:block"
             >
               {submitting ? "Placing order…" : "Place Order"}
@@ -313,11 +436,11 @@ export default function CheckoutPage() {
         <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-patch-line bg-patch-bg px-4 py-3 sm:hidden">
           <div>
             <p className="text-xs text-patch-ink-muted">Total</p>
-            <p className="text-sm font-medium text-patch-ink">{formatPrice(total)}</p>
+            <p className="text-sm font-medium text-patch-ink">{format(total)}</p>
           </div>
           <button
             type="submit"
-            disabled={submitting || !selectedCity}
+            disabled={submitting || !selectedDestination || !quote || !form.city}
             className="rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg disabled:opacity-50"
           >
             {submitting ? "Placing…" : "Place Order"}
@@ -360,16 +483,12 @@ function PhoneField({ value, onChange }: { value: string; onChange: (value: stri
     <div>
       <label className="text-xs font-medium text-patch-ink-muted">Phone</label>
       <div className="mt-1 flex overflow-hidden rounded-lg border border-patch-line focus-within:border-patch-ink">
-        <div className="flex items-center gap-2 border-r border-patch-line bg-patch-bg-alt px-3 text-sm font-medium text-patch-ink">
-          <span aria-hidden="true">🇧🇩</span>
-          <span>+880</span>
-        </div>
         <input
           required
-          inputMode="numeric"
-          pattern="1[0-9]{9}"
+          inputMode="tel"
+          pattern="\+[1-9][0-9]{7,14}"
           value={value}
-          placeholder="1XXXXXXXXX"
+          placeholder="+8801XXXXXXXXX"
           onChange={(e) => onChange(e.target.value)}
           className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-patch-ink-muted"
         />
