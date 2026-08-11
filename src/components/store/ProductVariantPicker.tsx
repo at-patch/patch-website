@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { addToCart, getCartLineKey } from "@/store/slices/cartSlice";
+import { startBuyNow } from "@/store/slices/checkoutSlice";
 import type { Product } from "@/types";
 
 const EMPTY_VARIANTS: Product["variants"] = [];
@@ -14,6 +15,7 @@ export function ProductVariantPicker({ product }: { product: Product }) {
   const variants = product.variants ?? EMPTY_VARIANTS;
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
+  const [buying, setBuying] = useState(false);
 
   const sizes = useMemo(
     () =>
@@ -102,33 +104,54 @@ export function ProductVariantPicker({ product }: { product: Product }) {
               : "Out of stock"}
       </p>
 
-      <div className="flex gap-3">
+      <div className="space-y-3">
+        <div className="flex gap-3">
+          <button
+            type="button"
+            disabled={!canAdd || inCart}
+            onClick={() => {
+              if (!selectedVariant) return;
+              dispatch(
+                addToCart({
+                  product,
+                  size: selectedVariant.size,
+                  color: selectedVariant.color,
+                })
+              );
+            }}
+            className="flex-1 rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {inCart ? "In Cart" : "Add to Cart"}
+          </button>
+          {inCart && (
+            <button
+              type="button"
+              onClick={() => router.push("/cart")}
+              className="rounded-full border border-patch-line px-6 py-3 text-sm font-medium text-patch-ink"
+            >
+              View Cart
+            </button>
+          )}
+        </div>
         <button
           type="button"
-          disabled={!canAdd || inCart}
+          disabled={!canAdd || buying}
           onClick={() => {
             if (!selectedVariant) return;
+            setBuying(true);
             dispatch(
-              addToCart({
+              startBuyNow({
                 product,
                 size: selectedVariant.size,
                 color: selectedVariant.color,
               })
             );
+            router.push("/checkout?mode=buy-now");
           }}
-          className="flex-1 rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="w-full rounded-full border border-patch-ink px-6 py-3 text-sm font-medium text-patch-ink transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {inCart ? "In Cart" : "Add to Cart"}
+          {buying ? "Taking you to checkout…" : "Buy Now"}
         </button>
-        {inCart && (
-          <button
-            type="button"
-            onClick={() => router.push("/cart")}
-            className="rounded-full border border-patch-line px-6 py-3 text-sm font-medium text-patch-ink"
-          >
-            View Cart
-          </button>
-        )}
       </div>
     </div>
   );

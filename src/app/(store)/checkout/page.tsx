@@ -2,12 +2,14 @@
 
 import { ChevronDown, CreditCard, MapPin, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import axiosInstance from "@/lib/axios";
 import { cn } from "@/lib/utils";
 import { useCurrency } from "@/components/store/CurrencyProvider";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { clearCoupon } from "@/store/slices/cartSlice";
+import { isBuyNowIntentFresh, markCheckoutSubmitted } from "@/store/slices/checkoutSlice";
 import type {
   ApiListResponse,
   ApiResponse,
@@ -56,10 +58,37 @@ function Section({
 }
 
 export default function CheckoutPage() {
-  const lines = useAppSelector((state) => state.cart.lines);
-  const couponCode = useAppSelector((state) => state.cart.couponCode);
+  return (
+    <Suspense
+      fallback={<div className="mx-auto max-w-2xl px-6 py-24 text-center text-sm text-patch-ink-muted">Loading checkout…</div>}
+    >
+      <CheckoutView />
+    </Suspense>
+  );
+}
+
+function CheckoutView() {
+  const searchParams = useSearchParams();
+  const isBuyNow = searchParams.get("mode") === "buy-now";
+
+  const cartLines = useAppSelector((state) => state.cart.lines);
+  const cartCouponCode = useAppSelector((state) => state.cart.couponCode);
+  const buyNowIntent = useAppSelector((state) => state.checkout.buyNow);
   const dispatch = useAppDispatch();
   const { currency, format } = useCurrency();
+
+  const buyNowLine = useMemo(
+    () => (buyNowIntent && isBuyNowIntentFresh(buyNowIntent) ? buyNowIntent.line : null),
+    [buyNowIntent]
+  );
+  const buyNowExpired = isBuyNow && !buyNowLine;
+  // A Buy Now checkout is deliberately isolated: only the selected item, and no
+  // coupon carried over from the saved cart.
+  const lines = useMemo(
+    () => (isBuyNow ? (buyNowLine ? [buyNowLine] : []) : cartLines),
+    [isBuyNow, buyNowLine, cartLines]
+  );
+  const couponCode = isBuyNow ? "" : cartCouponCode;
 
   const [openSection, setOpenSection] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState({
@@ -217,6 +246,9 @@ export default function CheckoutPage() {
         "/payments/stripe/checkout-session",
         { orderId: data.data._id }
       );
+      // Records which basket the pending order came from so the success page clears
+      // the Buy Now intent without touching a saved cart (and vice versa).
+      dispatch(markCheckoutSubmitted(isBuyNow ? "buy-now" : "cart"));
       window.location.assign(session.data.url);
     } catch (err) {
       const message =
@@ -227,6 +259,22 @@ export default function CheckoutPage() {
       setSubmitting(false);
     }
   };
+
+  if (buyNowExpired) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-24 text-center">
+        <p className="text-sm text-patch-ink-muted">
+          This Buy Now session has expired. Nothing was charged and your saved cart is untouched.
+        </p>
+        <Link
+          href="/shop"
+          className="mt-6 inline-block rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg"
+        >
+          Back to Shop
+        </Link>
+      </div>
+    );
+  }
 
   if (lines.length === 0) {
     return (
@@ -239,6 +287,11 @@ export default function CheckoutPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16 pb-28 sm:pb-16">
       <h1 className="font-heading text-2xl font-extrabold tracking-tight text-patch-ink">Checkout</h1>
+      {isBuyNow && (
+        <p className="mt-2 text-sm text-patch-ink-muted">
+          Buying one item directly — anything already in your cart is saved for later.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <Section step={1} title="Shipping Information" open={openSection === 1} onToggle={() => setOpenSection(1)}>

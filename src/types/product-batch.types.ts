@@ -22,9 +22,12 @@ export interface HomepageSettings {
   primaryPromo?: HomepagePromo;
   secondaryPromo?: HomepagePromo;
   productBatches: HomepageBatchSetting[];
+  shopBatches: HomepageBatchSetting[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type SectionPlacement = "productBatches" | "shopBatches";
 
 export interface HomepagePromo {
   eyebrow: string;

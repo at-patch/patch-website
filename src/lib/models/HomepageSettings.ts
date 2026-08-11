@@ -35,6 +35,9 @@ const HomepageSettingsSchema = new Schema(
       ctaHref: { type: String, default: "/story", trim: true },
     },
     productBatches: { type: [HomepageBatchSchema], default: [] },
+    // Same batch-as-section shape as the homepage, rendered above the Shop catalog
+    // when a visitor has not applied any search/filter/sort.
+    shopBatches: { type: [HomepageBatchSchema], default: [] },
   },
   { timestamps: true }
 );

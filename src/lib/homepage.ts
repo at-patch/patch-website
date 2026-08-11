@@ -21,14 +21,17 @@ type LeanProductBatch = {
   products: Product[];
 };
 
+type LeanBatchRow = {
+  batch?: LeanProductBatch | Types.ObjectId | string | null;
+  enabled?: boolean;
+  order?: number;
+};
+
 type LeanHomepageSettings = {
   primaryPromo?: HomepagePromo;
   secondaryPromo?: HomepagePromo;
-  productBatches?: Array<{
-    batch?: LeanProductBatch | Types.ObjectId | string | null;
-    enabled?: boolean;
-    order?: number;
-  }>;
+  productBatches?: LeanBatchRow[];
+  shopBatches?: LeanBatchRow[];
 };
 
 export type HomepagePromo = {
@@ -56,18 +59,24 @@ export const DEFAULT_HOMEPAGE_PROMOS = {
   },
 } satisfies Record<string, HomepagePromo>;
 
-type LeanHomepageBatchValue = NonNullable<LeanHomepageSettings["productBatches"]>[number]["batch"];
+type LeanHomepageBatchValue = LeanBatchRow["batch"];
 
 function isPopulatedBatch(batch: LeanHomepageBatchValue): batch is LeanProductBatch {
   return Boolean(batch && typeof batch === "object" && "active" in batch && "products" in batch);
 }
 
-export async function getHomepageProductSections(): Promise<HomepageProductSection[]> {
+/**
+ * Batch-backed carousel sections for a given placement. `productBatches` drives the
+ * editorial homepage; `shopBatches` drives the default (unfiltered) Shop view.
+ */
+async function getProductSections(
+  placement: "productBatches" | "shopBatches"
+): Promise<HomepageProductSection[]> {
   await connectToDatabase();
 
   const settings = await HomepageSettingsModel.findOne({ key: "homepage" })
     .populate({
-      path: "productBatches.batch",
+      path: `${placement}.batch`,
       model: ProductBatchModel,
       match: { active: true },
       populate: {
@@ -78,9 +87,10 @@ export async function getHomepageProductSections(): Promise<HomepageProductSecti
     })
     .lean<LeanHomepageSettings | null>();
 
-  if (!settings?.productBatches?.length) return [];
+  const rows = settings?.[placement];
+  if (!rows?.length) return [];
 
-  return settings.productBatches
+  return rows
     .filter((row) => row.enabled !== false)
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .flatMap((row) => {
@@ -100,6 +110,14 @@ export async function getHomepageProductSections(): Promise<HomepageProductSecti
         },
       ];
     });
+}
+
+export function getHomepageProductSections(): Promise<HomepageProductSection[]> {
+  return getProductSections("productBatches");
+}
+
+export function getShopProductSections(): Promise<HomepageProductSection[]> {
+  return getProductSections("shopBatches");
 }
 
 export async function getHomepagePromos() {

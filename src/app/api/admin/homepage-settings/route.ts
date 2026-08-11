@@ -35,13 +35,18 @@ function sanitizeRows(value: unknown) {
   }).sort((a, b) => a.order - b.order).map((row, index) => ({ ...row, order: index }));
 }
 
+const BATCH_POPULATE = [
+  { path: "productBatches.batch", model: ProductBatchModel },
+  { path: "shopBatches.batch", model: ProductBatchModel },
+];
+
 async function getSettings() {
   const settings = await HomepageSettingsModel.findOneAndUpdate(
     { key: "homepage" },
-    { $setOnInsert: { key: "homepage", productBatches: [] } },
+    { $setOnInsert: { key: "homepage", productBatches: [], shopBatches: [] } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   )
-    .populate({ path: "productBatches.batch", model: ProductBatchModel })
+    .populate(BATCH_POPULATE)
     .lean();
 
   return settings;
@@ -63,8 +68,11 @@ export async function PUT(request: NextRequest) {
   if (!parsed.success) return parsed.response;
 
   await connectToDatabase();
-  const productBatches = sanitizeRows(parsed.data.productBatches);
-  const update: Record<string, unknown> = { productBatches };
+  // Each placement is only rewritten when the caller actually sends it, so an
+  // editor that saves one placement cannot wipe the other.
+  const update: Record<string, unknown> = {};
+  if (parsed.data.productBatches) update.productBatches = sanitizeRows(parsed.data.productBatches);
+  if (parsed.data.shopBatches) update.shopBatches = sanitizeRows(parsed.data.shopBatches);
   if (parsed.data.primaryPromo) update.primaryPromo = parsed.data.primaryPromo;
   if (parsed.data.secondaryPromo) update.secondaryPromo = parsed.data.secondaryPromo;
 
@@ -76,7 +84,7 @@ export async function PUT(request: NextRequest) {
     },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   )
-    .populate({ path: "productBatches.batch", model: ProductBatchModel })
+    .populate(BATCH_POPULATE)
     .lean();
 
   return NextResponse.json({ success: true, data: settings });

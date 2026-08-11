@@ -3,7 +3,10 @@ import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
 import CategoryModel from "@/lib/models/Category";
 import { ProductCard } from "@/components/store/ProductCard";
+import { ProductCarouselSection } from "@/components/store/ProductCarouselSection";
 import { ShopFilters, ShopSort } from "@/components/store/ShopFilters";
+import { getShopProductSections, type HomepageProductSection } from "@/lib/homepage";
+import { isDefaultShopView } from "@/lib/shop-view";
 import {
   SAMPLE_SIZES,
   filterSampleProducts,
@@ -72,21 +75,39 @@ export default async function ShopPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const params = await searchParams;
-  const { products, total, page, totalPages, sizes, maxPrice, categories } = await getShopData(params);
+  const showSections = isDefaultShopView(params);
+  const [{ products, total, page, totalPages, sizes, maxPrice, categories }, sections] = await Promise.all([
+    getShopData(params),
+    showSections
+      ? getShopProductSections().catch(() => [] as HomepageProductSection[])
+      : Promise.resolve([] as HomepageProductSection[]),
+  ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-16">
-      <div className="mb-10">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-patch-accent">Shop</p>
-        <h1 className="font-heading mt-2 text-4xl font-extrabold tracking-tight text-patch-ink">
-          New In
-        </h1>
-        <p className="mt-2 max-w-lg text-sm text-patch-ink-muted">
-          Fresh styles land often and move fast — don&apos;t sleep on your size.
-        </p>
+    <>
+      <div className="mx-auto max-w-6xl px-6 pt-16">
+        <div className={sections.length > 0 ? "" : "mb-10"}>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-patch-accent">Shop</p>
+          <h1 className="font-heading mt-2 text-4xl font-extrabold tracking-tight text-patch-ink">
+            New In
+          </h1>
+          <p className="mt-2 max-w-lg text-sm text-patch-ink-muted">
+            Fresh styles land often and move fast — don&apos;t sleep on your size.
+          </p>
+        </div>
       </div>
 
-      <div className="flex flex-col gap-10 sm:flex-row">
+      {sections.map((section, index) => (
+        <ProductCarouselSection
+          key={section.id}
+          title={section.title}
+          description={section.description}
+          products={section.products}
+          index={index}
+        />
+      ))}
+
+      <div className="mx-auto flex max-w-6xl flex-col gap-10 px-6 pb-16 pt-4 sm:flex-row">
         <ShopFilters categories={categories} sizes={sizes} maxPrice={maxPrice} />
 
         <div className="flex-1">
@@ -131,6 +152,6 @@ export default async function ShopPage({
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }

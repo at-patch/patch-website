@@ -12,18 +12,22 @@ import {
 import storage from "redux-persist/lib/storage";
 import authReducer from "./slices/authSlice";
 import cartReducer from "./slices/cartSlice";
+import checkoutReducer from "./slices/checkoutSlice";
 import productReducer from "./slices/productSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
   cart: cartReducer,
+  checkout: checkoutReducer,
   product: productReducer,
 });
 
+// `checkout` is persisted so a Buy Now intent survives the Stripe redirect round
+// trip; its own TTL expires stale intents rather than relying on storage lifetime.
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["auth", "cart"],
+  whitelist: ["auth", "cart", "checkout"],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
