@@ -1,6 +1,6 @@
 # at_patch_web — Codebase Audit & 3-Phase Roadmap
 
-_Last updated: 2026-07-08_
+_Last updated: 2026-07-19_
 
 ## Overview
 
@@ -14,33 +14,29 @@ Next.js 16 (App Router) storefront + admin dashboard for an apparel/patch brand.
 
 These block a real launch — checkout currently lies to customers about payment, and two "features" silently do nothing.
 
-1. **Payments are fake.**
-   [src/app/api/payments/bkash/route.ts](../src/app/api/payments/bkash/route.ts:5) and [src/app/api/payments/nagad/route.ts](../src/app/api/payments/nagad/route.ts:5) always return HTTP 501 — no token exchange, no signatures, no callback/webhook handling. Worse, [src/app/(store)/checkout/page.tsx:81](../src/app/(store)/checkout/page.tsx:81) never calls them at all — it creates an order and redirects to success regardless of payment, and nothing in the codebase ever sets `paymentStatus: "paid"`.
-   → Build a real bKash/Nagad integration end-to-end (token exchange, checkout redirect, callback verification, order payment-status transition), or explicitly ship cash-on-delivery only and fix the UI/copy so it doesn't imply online payment works.
+1. **✅ DONE (Stripe + COD path) / bKash & Nagad still dormant.**
+   Checkout now runs through [src/app/api/payments/stripe/checkout-session/route.ts](../src/app/api/payments/stripe/checkout-session/route.ts) + [src/app/api/payments/stripe/webhook/route.ts](../src/app/api/payments/stripe/webhook/route.ts), with cash-on-delivery as the other real option — `paymentStatus` is now actually transitioned. bKash/Nagad routes are intentionally left as guarded placeholders (`.env.example` now documents them as "dormant for now — Stripe + COD cover Phase 1; revisit later"), so this is a deliberate scope call rather than an oversight.
 
-2. **Contact messages vanish into a void.**
-   [src/app/api/contact/route.ts:13](../src/app/api/contact/route.ts:13) just writes to Mongo. No email/Slack notification, and no admin page exists to read submissions at all (despite the model having a `resolved` flag).
-   → Add an admin inbox page + a notification on submit (email or Slack webhook).
+2. **✅ DONE — Contact messages.**
+   Admin inbox page exists at [src/app/admin/(dashboard)/contact/page.tsx](../src/app/admin/(dashboard)/contact/page.tsx), and [src/app/api/contact/route.ts](../src/app/api/contact/route.ts) sends a notification via `sendContactNotification` (Resend) on submit.
 
-3. **Wishlist is a lie.**
-   [src/components/store/WishlistButton.tsx:8](../src/components/store/WishlistButton.tsx:8) is local `useState` only — no model, no API route, no page. Toggling the heart does nothing beyond a re-render that resets on refresh.
-   → Either wire it up properly (model + API + `/account/wishlist` page) or remove the button so it's not a broken promise.
+3. **✅ DONE — Wishlist.**
+   Wired up for real: model, [src/app/api/account/wishlist](../src/app/api/account/wishlist) API routes, and [src/app/(store)/account/wishlist](../src/app/(store)/account/wishlist) page.
 
-4. **Newsletter signup is a lie.**
-   [src/components/store/Footer.tsx:55-58](../src/components/store/Footer.tsx:55) flips local state on submit — the email is never stored or sent anywhere.
-   → Wire to a real subscriber store or a 3rd-party (Mailchimp/Klaviyo) or remove the form.
+4. **✅ DONE — Newsletter signup.**
+   No longer a no-op local-state toggle; wired to a real subscriber flow.
 
-5. **Env var / credentials cleanup.**
-   `.env.example` lists `AI_GATEWAY_API_KEY` and full bKash/Nagad var sets that the code never reads, while `GOOGLE_VERTEX_PROJECT` / `GOOGLE_VERTEX_LOCATION` (actually used in [src/app/api/chat/route.ts:5](../src/app/api/chat/route.ts:5)) and GCP credentials are missing from it entirely. `vertex-key.json` at the repo root is currently empty.
-   → Reconcile `.env.example` with actual `process.env` usage; confirm real Vertex credentials are provisioned before relying on chat in production.
+5. **✅ DONE — Env var / credentials cleanup.**
+   `.env.example` now matches actual `process.env` usage (Mongo, admin/customer auth, Cloudinary, Vertex AI, Stripe, Resend, Upstash rate-limit vars) and explicitly notes bKash/Nagad as dormant rather than silently unused.
 
-6. **Basic auth hardening.**
-   No rate limiting on login/register/contact endpoints. Admin auth is a single hardcoded email/password pair ([src/app/api/admin/login/route.ts:17](../src/app/api/admin/login/route.ts:17)) with no lockout.
-   → Add rate limiting before this is public-facing.
+6. **✅ DONE — Basic auth hardening.**
+   Rate limiting added via [src/lib/rate-limit.ts](../src/lib/rate-limit.ts) (Upstash-backed) on login, register, and contact endpoints. Admin auth is still a single hardcoded email/password pair with no lockout — see Phase 3 item 5 for multi-admin/roles.
 
 ---
 
 ## Phase 2 — Core UX & commerce completeness
+
+_Status: not started — verified against current code on 2026-07-19._
 
 1. **Order lifecycle gaps.** No refund endpoint despite the `refunded` enum existing on [src/lib/models/Order.ts:41](../src/lib/models/Order.ts:41); no shipping/tracking-number field; no customer-initiated cancel/return action (customer order list is read-only).
 2. **Customer account security.** No password reset and no email verification flow anywhere in [src/lib/customer-auth.ts](../src/lib/customer-auth.ts).
@@ -55,6 +51,8 @@ These block a real launch — checkout currently lies to customers about payment
 
 ## Phase 3 — Scale, quality & ops maturity
 
+_Status: not started — verified against current code on 2026-07-19._
+
 1. **Testing infrastructure is completely absent.** No Vitest/Jest/Playwright, no test files, no `test` script in `package.json`.
    → Start with checkout, auth, and cart — the highest-risk flows.
 2. **Validation layer.** `zod` is a dependency but has zero usages in the codebase — API routes rely solely on Mongoose schema validation.
@@ -67,4 +65,4 @@ These block a real launch — checkout currently lies to customers about payment
 
 ## Suggested sequencing
 
-Phase 1 is the launch blocker — in particular payments, since checkout currently completes "successfully" with no money changing hands. Phases 2 and 3 can be reprioritized based on which matters more for the business: commerce completeness (Phase 2) vs. long-term maintainability (Phase 3).
+Phase 1 is complete (bKash/Nagad deliberately deferred — Stripe + COD cover launch). Phases 2 and 3 remain untouched and can be reprioritized based on which matters more for the business: commerce completeness (Phase 2) vs. long-term maintainability (Phase 3).
