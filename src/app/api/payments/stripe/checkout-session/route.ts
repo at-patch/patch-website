@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
       cancel_url: `${origin}/checkout`,
     });
 
+    await OrderModel.updateOne({ _id: order._id }, { $set: { stripeSessionId: session.id } });
+
     return NextResponse.json({ success: true, data: { url: session.url } });
   } catch (error) {
     const result = await OrderModel.updateOne(

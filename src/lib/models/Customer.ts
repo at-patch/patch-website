@@ -24,10 +24,18 @@ const CustomerSchema = new Schema(
     passwordHash: { type: String, required: true },
     addresses: { type: [SavedAddressSchema], default: [] },
     wishlist: { type: [Schema.Types.ObjectId], ref: "Product", default: [] },
+    emailVerified: { type: Boolean, default: false },
+    verifyToken: { type: String },
+    verifyTokenExpiry: { type: Date },
+    resetToken: { type: String },
+    resetTokenExpiry: { type: Date },
   },
   { timestamps: true }
 );
 
 export type Customer = InferSchemaType<typeof CustomerSchema>;
+
+// Fields that should never reach the client — passed to .select() on any customer-facing read.
+export const PRIVATE_CUSTOMER_FIELDS = "-passwordHash -verifyToken -verifyTokenExpiry -resetToken -resetTokenExpiry";
 
 export default mongoose.models.Customer || mongoose.model("Customer", CustomerSchema);

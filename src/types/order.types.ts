@@ -6,7 +6,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
-export type PaymentMethod = "bkash" | "nagad" | "card" | "cod";
+export type PaymentMethod = "card" | "cod";
 
 export type PaymentStatus = "pending" | "paid" | "failed" | "refunded";
 
@@ -42,6 +42,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   status: OrderStatus;
+  trackingNumber?: string;
   createdAt: string;
   updatedAt: string;
 }

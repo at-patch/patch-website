@@ -6,9 +6,10 @@ import Link from "next/link";
 import { Heart, X } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { formatPrice } from "@/lib/utils";
-import type { ApiListResponse, ApiResponse, Customer, Order } from "@/types";
+import type { ApiListResponse, ApiResponse, Customer, Order, OrderStatus } from "@/types";
 
 const AREAS = ["gulshan", "banani", "baridhara", "other"] as const;
+const CANCELLABLE_STATUSES: OrderStatus[] = ["placed", "confirmed", "processing"];
 
 export default function AccountDashboardPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function AccountDashboardPage() {
   const [profileForm, setProfileForm] = useState({ name: "", phone: "" });
   const [profileSaved, setProfileSaved] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const [addressForm, setAddressForm] = useState({
     label: "Home",
     fullName: "",
@@ -40,6 +42,16 @@ export default function AccountDashboardPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
     load();
   }, []);
+
+  const handleCancelOrder = async (orderId: string) => {
+    await axiosInstance.patch(`/account/orders/${orderId}`, { status: "cancelled" });
+    load();
+  };
+
+  const handleResendVerification = async () => {
+    await axiosInstance.post("/account/resend-verification");
+    setResendSent(true);
+  };
 
   const handleLogout = async () => {
     await axiosInstance.post("/account/logout");
@@ -83,6 +95,19 @@ export default function AccountDashboardPage() {
         </button>
       </div>
 
+      {!customer.emailVerified && (
+        <div className="mt-6 flex items-center justify-between rounded-lg border border-patch-line bg-patch-bg-alt px-4 py-3 text-sm">
+          <span className="text-patch-ink-muted">Your email isn&apos;t verified yet.</span>
+          {resendSent ? (
+            <span className="text-patch-accent">Verification email sent.</span>
+          ) : (
+            <button onClick={handleResendVerification} className="font-medium underline underline-offset-4">
+              Resend verification email
+            </button>
+          )}
+        </div>
+      )}
+
       <Link
         href="/account/wishlist"
         className="mt-6 flex items-center gap-1.5 text-sm font-medium text-patch-ink underline underline-offset-4"
@@ -103,8 +128,21 @@ export default function AccountDashboardPage() {
                   <p className="text-xs text-patch-ink-muted">
                     {new Date(order.createdAt).toLocaleDateString()} · {order.status}
                   </p>
+                  {order.trackingNumber && (
+                    <p className="text-xs text-patch-ink-muted">Tracking: {order.trackingNumber}</p>
+                  )}
                 </div>
-                <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                <div className="flex items-center gap-3">
+                  <p className="text-patch-ink">{formatPrice(order.total, order.currency)}</p>
+                  {CANCELLABLE_STATUSES.includes(order.status) && (
+                    <button
+                      onClick={() => handleCancelOrder(order._id)}
+                      className="text-xs font-medium text-patch-ink-muted underline underline-offset-4 hover:text-patch-ink"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

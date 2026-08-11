@@ -31,6 +31,6 @@ export const config = {
     "/admin",
     "/admin/((?!login).*)",
     "/account",
-    "/account/((?!login|register).*)",
+    "/account/((?!login|register|forgot-password|reset-password|verify-email).*)",
   ],
 };

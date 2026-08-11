@@ -39,3 +39,21 @@ export async function sendContactNotification({
     text: `From: ${name} <${email}>\n\n${message}`,
   });
 }
+
+export async function sendPasswordResetEmail({ to, resetUrl }: { to: string; resetUrl: string }) {
+  await getResend().emails.send({
+    from: "Patch <onboarding@resend.dev>",
+    to,
+    subject: "Reset your Patch password",
+    text: `Reset your password: ${resetUrl}\n\nThis link expires in 30 minutes. If you didn't request this, ignore this email.`,
+  });
+}
+
+export async function sendVerificationEmail({ to, verifyUrl }: { to: string; verifyUrl: string }) {
+  await getResend().emails.send({
+    from: "Patch <onboarding@resend.dev>",
+    to,
+    subject: "Verify your Patch account",
+    text: `Verify your email: ${verifyUrl}\n\nThis link expires in 24 hours.`,
+  });
+}

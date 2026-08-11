@@ -3,35 +3,13 @@ import { connectToDatabase } from "@/lib/db";
 import OrderModel from "@/lib/models/Order";
 import ProductModel from "@/lib/models/Product";
 import { requireAdmin } from "@/lib/require-admin";
+import { releaseOrderStock } from "@/lib/inventory";
+import { refundOrder } from "@/lib/stripe";
 import type { OrderItem } from "@/types";
 
 async function getProductRarity(productId: string) {
   const product = await ProductModel.findById(productId).select("rarity").lean();
   return product?.rarity === "multi-quantity" ? "multi-quantity" : "one-of-one";
-}
-
-async function markOrderItemsAvailable(items: OrderItem[]) {
-  for (const item of items) {
-    const rarity = await getProductRarity(item.product);
-
-    if (rarity === "multi-quantity") {
-      await ProductModel.updateOne(
-        {
-          _id: item.product,
-          variants: {
-            $elemMatch: {
-              size: item.size,
-              color: item.color ?? "",
-            },
-          },
-        },
-        { $inc: { "variants.$.quantity": 1 } }
-      );
-      continue;
-    }
-
-    await ProductModel.updateOne({ _id: item.product }, { $set: { status: "available" } });
-  }
 }
 
 async function markOrderItemsSold(items: OrderItem[]) {
@@ -71,7 +49,10 @@ export async function PATCH(
   }
 
   if (statusChanged && nextStatus === "cancelled") {
-    await markOrderItemsAvailable(order.items as OrderItem[]);
+    await releaseOrderStock(order);
+    if (order.paymentStatus === "paid") {
+      await refundOrder(order);
+    }
   }
 
   return NextResponse.json({ success: true, data: order });

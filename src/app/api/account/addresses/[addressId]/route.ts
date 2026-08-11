@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
-import CustomerModel from "@/lib/models/Customer";
+import CustomerModel, { PRIVATE_CUSTOMER_FIELDS } from "@/lib/models/Customer";
 import { requireCustomer } from "@/lib/require-customer";
 
 export async function DELETE(
@@ -17,7 +17,7 @@ export async function DELETE(
     customerId,
     { $pull: { addresses: { _id: addressId } } },
     { new: true }
-  ).select("-passwordHash");
+  ).select(PRIVATE_CUSTOMER_FIELDS);
 
   return NextResponse.json({ success: true, data: customer });
 }

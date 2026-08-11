@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
-import CustomerModel from "@/lib/models/Customer";
+import CustomerModel, { PRIVATE_CUSTOMER_FIELDS } from "@/lib/models/Customer";
 import { requireCustomer } from "@/lib/require-customer";
 
 export async function POST(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     customerId,
     { $push: { addresses: address } },
     { new: true, runValidators: true }
-  ).select("-passwordHash");
+  ).select(PRIVATE_CUSTOMER_FIELDS);
 
   return NextResponse.json({ success: true, data: customer }, { status: 201 });
 }
