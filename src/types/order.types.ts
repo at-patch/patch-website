@@ -1,3 +1,5 @@
+import type { CourierClass } from "./inventory.types";
+
 export type OrderStatus =
   | "placed"
   | "confirmed"
@@ -52,6 +54,7 @@ export interface Order {
   totalWeightKg?: number;
   chargeableWeightKg?: number;
   shippingRuleId?: string;
+  courierClass?: CourierClass;
   exchangeRate?: number;
   exchangeRateTimestamp?: string;
   exchangeRateSource?: string;
@@ -75,4 +78,5 @@ export interface CreateOrderInput {
   paymentMethod: PaymentMethod;
   currency?: "BDT" | "USD" | "EUR" | "GBP" | "CNY";
   couponCode?: string;
+  courierClass?: CourierClass;
 }

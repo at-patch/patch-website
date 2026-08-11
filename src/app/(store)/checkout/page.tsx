@@ -12,6 +12,7 @@ import type {
   ApiListResponse,
   ApiResponse,
   CouponValidationResult,
+  CourierClass,
   Order,
   PaymentMethod,
   ShippingDestination,
@@ -21,6 +22,12 @@ import type {
 const PAYMENT_OPTIONS: { value: PaymentMethod; label: string; icon: typeof CreditCard }[] = [
   { value: "card", label: "Card (Visa / Mastercard)", icon: CreditCard },
 ];
+
+const COURIER_CLASS_LABELS: Record<CourierClass, string> = {
+  premium: "Premium",
+  express: "Express",
+  economy: "Economy",
+};
 
 function Section({
   step,
@@ -76,6 +83,7 @@ export default function CheckoutPage() {
   const [destinations, setDestinations] = useState<ShippingDestination[]>([]);
   const [destinationsLoading, setDestinationsLoading] = useState(true);
   const [quoteState, setQuoteState] = useState<{ key: string; quote: ShippingQuote } | null>(null);
+  const [selectedCourierClass, setSelectedCourierClass] = useState<CourierClass | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [discount, setDiscount] = useState(0);
@@ -95,7 +103,10 @@ export default function CheckoutPage() {
         );
   const quoteKey = `${selectedDestination?.id ?? ""}:${lines.map((line) => line.productId).join(",")}`;
   const quote = quoteState?.key === quoteKey ? quoteState.quote : null;
-  const shippingCost = quote?.shippingCost ?? 0;
+  const selectedClassOption = quote?.availableClasses?.find(
+    (option) => option.courierClass === selectedCourierClass
+  );
+  const shippingCost = selectedClassOption?.shippingCost ?? quote?.shippingCost ?? 0;
   const effectiveDiscount = couponCode ? discount : 0;
   const total = subtotal + shippingCost - effectiveDiscount;
 
@@ -142,7 +153,9 @@ export default function CheckoutPage() {
         districtSlug: selectedDestination.districtSlug,
       })
       .then(({ data }) => {
-        if (!cancelled) setQuoteState({ key: requestKey, quote: data.data });
+        if (cancelled) return;
+        setQuoteState({ key: requestKey, quote: data.data });
+        setSelectedCourierClass(data.data.courierClass ?? null);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -185,6 +198,12 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (quote.availableClasses && quote.availableClasses.length > 0 && !selectedCourierClass) {
+      setSubmitting(false);
+      setError("Select a courier class.");
+      return;
+    }
+
     try {
       const { data } = await axiosInstance.post<ApiResponse<Order>>("/orders", {
         items: lines.map((l) => ({
@@ -211,6 +230,7 @@ export default function CheckoutPage() {
         paymentMethod,
         currency,
         couponCode: couponCode || undefined,
+        courierClass: selectedCourierClass ?? undefined,
       });
 
       const { data: session } = await axiosInstance.post<ApiResponse<{ url: string }>>(
@@ -321,10 +341,45 @@ export default function CheckoutPage() {
                 />
               </div>
             </div>
+            {quote?.availableClasses && quote.availableClasses.length > 0 && (
+              <div>
+                <label className="text-xs font-medium text-patch-ink-muted">Courier class</label>
+                <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                  {quote.availableClasses.map((option) => (
+                    <button
+                      key={option.courierClass}
+                      type="button"
+                      onClick={() => setSelectedCourierClass(option.courierClass)}
+                      className={cn(
+                        "flex flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left text-sm",
+                        selectedCourierClass === option.courierClass
+                          ? "border-patch-ink bg-patch-ink text-patch-bg"
+                          : "border-patch-line text-patch-ink"
+                      )}
+                    >
+                      <span className="font-medium">{COURIER_CLASS_LABELS[option.courierClass]}</span>
+                      <span
+                        className={cn(
+                          "text-xs",
+                          selectedCourierClass === option.courierClass ? "text-patch-bg/80" : "text-patch-ink-muted"
+                        )}
+                      >
+                        {format(option.shippingCost)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={() => setOpenSection(2)}
-              disabled={!selectedDestination || !quote || !form.city}
+              disabled={
+                !selectedDestination ||
+                !quote ||
+                !form.city ||
+                (Boolean(quote.availableClasses?.length) && !selectedCourierClass)
+              }
               className="rounded-full bg-patch-ink px-5 py-2 text-sm font-medium text-patch-bg disabled:opacity-50"
             >
               Continue to Payment
@@ -389,7 +444,9 @@ export default function CheckoutPage() {
                 <span>
                   Shipping
                   {selectedDestination
-                    ? ` (${selectedDestination.district || selectedDestination.countryName})`
+                    ? ` (${selectedDestination.district || selectedDestination.countryName}${
+                        selectedCourierClass ? ` – ${COURIER_CLASS_LABELS[selectedCourierClass]}` : ""
+                      })`
                     : ""}
                 </span>
                 <span>{quote ? format(shippingCost) : "Calculating..."}</span>
@@ -425,7 +482,13 @@ export default function CheckoutPage() {
 
             <button
               type="submit"
-              disabled={submitting || !selectedDestination || !quote || !form.city}
+              disabled={
+                submitting ||
+                !selectedDestination ||
+                !quote ||
+                !form.city ||
+                (Boolean(quote?.availableClasses?.length) && !selectedCourierClass)
+              }
               className="hidden w-full rounded-full bg-patch-ink px-6 py-3 text-sm font-medium text-patch-bg hover:opacity-90 disabled:opacity-50 sm:block"
             >
               {submitting ? "Placing order…" : "Place Order"}

@@ -36,6 +36,7 @@ export const createOrderSchema = z.object({
   paymentMethod: z.literal("card"),
   currency: z.enum(["BDT", "USD", "EUR", "GBP", "CNY"]).default("BDT"),
   couponCode: z.string().trim().optional(),
+  courierClass: z.enum(["premium", "express", "economy"]).optional(),
 });
 
 export const checkoutSessionSchema = z.object({
@@ -46,6 +47,7 @@ export const shippingQuoteSchema = z.object({
   productIds: z.array(z.string().trim().min(1)).min(1, "Cart is empty.").max(100),
   countryCode: z.string().trim().length(2).transform((value) => value.toUpperCase()),
   districtSlug: z.string().trim().optional(),
+  courierClass: z.enum(["premium", "express", "economy"]).optional(),
 });
 
 // Only fields the admin UI actually edits — unknown keys are stripped by

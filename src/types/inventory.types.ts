@@ -105,10 +105,19 @@ export interface ShippingDestination {
   legacy?: boolean;
 }
 
+export type CourierClass = "premium" | "express" | "economy";
+
+export interface CourierClassOption {
+  courierClass: CourierClass;
+  shippingCost: number;
+}
+
 export interface ShippingQuote {
   destination: ShippingDestination;
   totalWeightKg: number;
   chargeableWeightKg: number;
   shippingCost: number;
   currency: string;
+  courierClass?: CourierClass;
+  availableClasses?: CourierClassOption[];
 }

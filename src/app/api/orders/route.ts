@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       {
         countryCode: body.shippingAddress.countryCode ?? "BD",
         districtSlug: body.shippingAddress.districtSlug ?? body.shippingAddress.citySlug,
+        courierClass: body.courierClass,
       },
       totalWeightKg
     );
@@ -154,6 +155,7 @@ export async function POST(request: NextRequest) {
       totalWeightKg: shipping.totalWeightKg,
       chargeableWeightKg: shipping.chargeableWeightKg,
       shippingRuleId: shipping.shippingRuleId,
+      courierClass: shipping.courierClass,
       couponCode: claimedCouponCode ?? "",
       discount: convertedDiscount,
       baseDiscount: discount,

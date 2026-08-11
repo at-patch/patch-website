@@ -1,12 +1,19 @@
+import CourierZoneModel from "@/lib/models/CourierZone";
 import ProductModel from "@/lib/models/Product";
 import ShippingCityModel from "@/lib/models/ShippingCity";
 import ShippingZoneModel from "@/lib/models/ShippingZone";
+import {
+  getInternationalChargeableWeightKg,
+  listAvailableCourierClasses,
+  type CourierRateTier,
+} from "@/lib/courier-shipping";
 import { calculateWeightShipping } from "@/lib/shipping";
-import type { ShippingDestination, ShippingQuote } from "@/types";
+import type { CourierClass, ShippingDestination, ShippingQuote } from "@/types";
 
 export interface ShippingDestinationInput {
   countryCode: string;
   districtSlug?: string;
+  courierClass?: CourierClass;
 }
 
 type ResolvedShipping = ShippingQuote & {
@@ -28,24 +35,35 @@ export async function listActiveShippingDestinations(): Promise<ShippingDestinat
       currency: zone.currency,
     }));
 
-  if (zones.some((zone) => zone.countryCode === "BD" && zone.scope === "district")) {
-    return destinations;
-  }
+  const bdDistrictsReady = zones.some((zone) => zone.countryCode === "BD" && zone.scope === "district");
+  const bangladeshDestinations = bdDistrictsReady
+    ? destinations
+    : [
+        ...destinations,
+        ...(await ShippingCityModel.find({ isActive: true }).sort({ name: 1 }).lean()).map((city) => ({
+          id: String(city._id),
+          countryCode: "BD",
+          countryName: "Bangladesh",
+          scope: "district" as const,
+          district: city.name,
+          districtSlug: city.slug,
+          currency: "BDT",
+          legacy: true,
+        })),
+      ];
 
-  const legacyCities = await ShippingCityModel.find({ isActive: true }).sort({ name: 1 }).lean();
-  return [
-    ...destinations,
-    ...legacyCities.map((city) => ({
-    id: String(city._id),
-    countryCode: "BD",
-    countryName: "Bangladesh",
-    scope: "district",
-    district: city.name,
-    districtSlug: city.slug,
-    currency: "BDT",
-    legacy: true,
-    })),
-  ];
+  const courierZones = await CourierZoneModel.find({ isActive: true }).lean();
+  const internationalDestinations = courierZones.flatMap((zone) =>
+    zone.countries.map((country: { code: string; name: string }) => ({
+      id: `${String(zone._id)}:${country.code}`,
+      countryCode: country.code,
+      countryName: country.name,
+      scope: "country" as const,
+      currency: zone.currency,
+    }))
+  );
+
+  return [...bangladeshDestinations, ...internationalDestinations];
 }
 
 export async function resolveShippingForWeight(
@@ -106,7 +124,52 @@ export async function resolveShippingForWeight(
     }
   }
 
+  if (countryCode !== "BD") {
+    return resolveInternationalCourierShipping(countryCode, totalWeightKg, destination.courierClass);
+  }
+
   return null;
+}
+
+async function resolveInternationalCourierShipping(
+  countryCode: string,
+  totalWeightKg: number,
+  requestedClass?: CourierClass
+): Promise<ResolvedShipping | null> {
+  const zone = await CourierZoneModel.findOne({ "countries.code": countryCode, isActive: true }).lean();
+  if (!zone) return null;
+
+  const country = zone.countries.find((entry: { code: string; name: string }) => entry.code === countryCode);
+  if (!country) return null;
+
+  const availableClasses = listAvailableCourierClasses(zone.rates as CourierRateTier[], totalWeightKg);
+  if (availableClasses.length === 0) return null;
+
+  const chosen = requestedClass
+    ? availableClasses.find((option) => option.courierClass === requestedClass)
+    : availableClasses.reduce((cheapest, option) =>
+        option.shippingCost < cheapest.shippingCost ? option : cheapest
+      );
+  if (!chosen) return null;
+
+  const chargeableWeightKg = getInternationalChargeableWeightKg(totalWeightKg);
+
+  return {
+    totalWeightKg,
+    chargeableWeightKg,
+    shippingCost: chosen.shippingCost,
+    currency: zone.currency,
+    shippingRuleId: String(zone._id),
+    courierClass: chosen.courierClass,
+    availableClasses,
+    destination: {
+      id: `${String(zone._id)}:${country.code}`,
+      countryCode: country.code,
+      countryName: country.name,
+      scope: "country",
+      currency: zone.currency,
+    },
+  };
 }
 
 export async function quoteShippingForProducts(
