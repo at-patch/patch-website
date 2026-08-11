@@ -1,6 +1,7 @@
 import { Scissors, Sparkles } from "lucide-react";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
+import ReviewModel from "@/lib/models/Review";
 import { HeroSlider } from "@/components/store/HeroSlider";
 import { CategoryGrid } from "@/components/store/CategoryGrid";
 import { PromoBanner } from "@/components/store/PromoBanner";
@@ -9,25 +10,40 @@ import { PhilosophySection } from "@/components/store/PhilosophySection";
 import { TestimonialCarousel } from "@/components/store/TestimonialCarousel";
 import { InstagramGrid } from "@/components/store/InstagramGrid";
 import { TrustBadges } from "@/components/store/TrustBadges";
-import type { Product } from "@/types";
+import type { Product, Review } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 async function getHomeProducts() {
   await connectToDatabase();
-  const products = await ProductModel.find({ status: "available" })
-    .sort({ createdAt: -1 })
-    .limit(16)
+
+  const [bestSellerDocs, popularPickDocs, latestDocs] = await Promise.all([
+    ProductModel.find({ status: "available", isBestSeller: true }).sort({ bestSellerOrder: 1 }).limit(8).lean(),
+    ProductModel.find({ status: "available", isPopularPick: true }).sort({ popularPickOrder: 1 }).limit(8).lean(),
+    ProductModel.find({ status: "available" }).sort({ createdAt: -1 }).limit(16).lean(),
+  ]);
+
+  const latest: Product[] = JSON.parse(JSON.stringify(latestDocs));
+  const bestSelling: Product[] = bestSellerDocs.length > 0 ? JSON.parse(JSON.stringify(bestSellerDocs)) : latest.slice(0, 8);
+  const popularPicks: Product[] = popularPickDocs.length > 0 ? JSON.parse(JSON.stringify(popularPickDocs)) : latest.slice(0, 8);
+  const newArrivals = latest.slice(8, 16).length > 0 ? latest.slice(8, 16) : latest.slice(0, 8);
+
+  return { bestSelling, popularPicks, newArrivals };
+}
+
+async function getHomeReviews() {
+  await connectToDatabase();
+  const docs = await ReviewModel.find({ featured: true })
+    .sort({ order: 1, createdAt: -1 })
+    .limit(8)
+    .populate("productRef", "name slug price currency images")
     .lean();
-  const list: Product[] = JSON.parse(JSON.stringify(products));
-  return {
-    bestSelling: list.slice(0, 8),
-    newArrivals: list.slice(8, 16).length > 0 ? list.slice(8, 16) : list.slice(0, 8),
-  };
+  const reviews: Review[] = JSON.parse(JSON.stringify(docs));
+  return reviews;
 }
 
 export default async function HomePage() {
-  const { bestSelling, newArrivals } = await getHomeProducts();
+  const [{ bestSelling, popularPicks, newArrivals }, reviews] = await Promise.all([getHomeProducts(), getHomeReviews()]);
 
   return (
     <div>
@@ -42,6 +58,7 @@ export default async function HomePage() {
         icon={Sparkles}
       />
       <ProductCarouselSection title="Best Selling" products={bestSelling} />
+      <ProductCarouselSection title="Popular Picks" products={popularPicks} />
       <PromoBanner
         eyebrow="Made in Dhaka"
         title="Every stitch, done by hand."
@@ -53,7 +70,7 @@ export default async function HomePage() {
       />
       <PhilosophySection />
       <ProductCarouselSection title="New Arrivals" products={newArrivals} />
-      <TestimonialCarousel />
+      <TestimonialCarousel reviews={reviews} />
       <InstagramGrid />
       <TrustBadges />
     </div>

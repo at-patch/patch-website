@@ -20,6 +20,10 @@ export interface Product {
   quantityAvailable: number;
   status: ProductStatus;
   sourceInventoryItem?: string;
+  isBestSeller: boolean;
+  bestSellerOrder: number;
+  isPopularPick: boolean;
+  popularPickOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,4 +52,8 @@ export interface ProductInput {
   batchLabel?: string;
   quantityAvailable?: number;
   sourceInventoryItem?: string;
+  isBestSeller?: boolean;
+  bestSellerOrder?: number;
+  isPopularPick?: boolean;
+  popularPickOrder?: number;
 }

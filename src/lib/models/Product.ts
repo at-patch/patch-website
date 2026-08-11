@@ -27,6 +27,10 @@ const ProductSchema = new Schema(
       default: "available",
     },
     sourceInventoryItem: { type: Schema.Types.ObjectId, ref: "InventoryItem" },
+    isBestSeller: { type: Boolean, default: false },
+    bestSellerOrder: { type: Number, default: 0 },
+    isPopularPick: { type: Boolean, default: false },
+    popularPickOrder: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

@@ -7,6 +7,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 const UPLOAD_FOLDERS = {
   products: "patch/products",
   categories: "patch/categories",
+  reviews: "patch/reviews",
 } as const;
 
 export async function POST(request: NextRequest) {

@@ -16,7 +16,7 @@ export function ImageUploader({
   images: string[];
   onChange: (images: string[]) => void;
   label?: string;
-  uploadFolder?: "products" | "categories";
+  uploadFolder?: "products" | "categories" | "reviews";
   multiple?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
