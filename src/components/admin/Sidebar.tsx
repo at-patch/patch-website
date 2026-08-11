@@ -15,6 +15,7 @@ import {
   Settings2,
   ShoppingCart,
   Tags,
+  TrendingUp,
   UserCog,
   UserPlus,
 } from "lucide-react";
@@ -27,7 +28,8 @@ const LINKS = [
   { href: "/admin/patterns", label: "Patterns", icon: Scissors },
   { href: "/admin/products", label: "Products / SKUs", icon: Package },
   { href: "/admin/product-batches", label: "Product Batches", icon: Boxes },
-  { href: "/admin/homepage-settings", label: "Homepage Settings", icon: Settings2 },
+  { href: "/admin/top-selling", label: "Top Selling", icon: TrendingUp },
+  { href: "/admin/homepage-settings", label: "Storefront Settings", icon: Settings2 },
   { href: "/admin/about-settings", label: "About Settings", icon: BookOpen },
   { href: "/admin/utilities", label: "Utilities", icon: Settings2 },
   { href: "/admin/categories", label: "Categories", icon: Tags },

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CheckCircle2, LayoutDashboard, Recycle, ShoppingCart, TrendingUp, Wallet } from "lucide-react";
 import { connectToDatabase } from "@/lib/db";
 import ProductModel from "@/lib/models/Product";
@@ -5,6 +6,7 @@ import InventoryItemModel from "@/lib/models/InventoryItem";
 import OrderModel from "@/lib/models/Order";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { RevenueChart } from "@/components/admin/RevenueChart";
+import { getTopSellingProducts } from "@/lib/best-sellers";
 import { formatPrice } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -49,20 +51,7 @@ async function getRevenueStats() {
         },
       },
     ]),
-    OrderModel.aggregate([
-      { $match: { paymentStatus: "paid" } },
-      { $unwind: "$items" },
-      {
-        $group: {
-          _id: "$items.product",
-          name: { $first: "$items.name" },
-          qty: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ["$items.basePrice", "$items.price"] } },
-        },
-      },
-      { $sort: { revenue: -1 } },
-      { $limit: 5 },
-    ]),
+    getTopSellingProducts(),
   ]);
 
   // Fill in zero-revenue days so the chart always spans a full TREND_DAYS range.
@@ -81,7 +70,7 @@ async function getRevenueStats() {
     totalRevenue: totals.revenue,
     paidOrders: totals.orders,
     averageOrderValue: totals.orders > 0 ? Math.round(totals.revenue / totals.orders) : 0,
-    topProducts: topProductsRaw as { _id: string; name: string; qty: number; revenue: number }[],
+    topProducts: topProductsRaw,
   };
 }
 
@@ -128,18 +117,25 @@ export default async function AdminDashboardPage() {
         </Card>
 
         <Card className="p-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-patch-ink-muted">Top selling</p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-patch-ink-muted">Top 10 selling</p>
+            <Link href="/admin/top-selling" className="text-xs text-patch-accent hover:underline">
+              View report
+            </Link>
+          </div>
           {revenue.topProducts.length === 0 ? (
             <p className="mt-4 text-sm text-patch-ink-muted">No paid orders yet.</p>
           ) : (
             <ul className="mt-4 space-y-3">
               {revenue.topProducts.map((product, i) => (
-                <li key={product._id} className="flex items-center justify-between gap-3 text-sm">
+                <li key={product.productId} className="flex items-center justify-between gap-3 text-sm">
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="shrink-0 text-xs text-patch-ink-muted">{i + 1}.</span>
                     <span className="truncate text-patch-ink">{product.name}</span>
                   </span>
-                  <span className="shrink-0 text-patch-ink-muted">{formatPrice(product.revenue)}</span>
+                  <span className="shrink-0 text-patch-ink-muted">
+                    {product.units} sold · {formatPrice(product.revenue)}
+                  </span>
                 </li>
               ))}
             </ul>

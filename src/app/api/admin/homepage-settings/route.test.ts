@@ -57,4 +57,29 @@ describe("admin homepage settings route", () => {
       expect.objectContaining({ upsert: true, new: true })
     );
   });
+
+  it("saves shop placement rows independently of homepage rows", async () => {
+    const { route, findOneAndUpdate } = await loadRoute();
+
+    const response = await route.PUT(putRequest({
+      shopBatches: [{ batch: firstBatchId, enabled: true, order: 5 }],
+    }));
+
+    expect(response.status).toBe(200);
+    const [, update] = findOneAndUpdate.mock.calls[0];
+    expect(update.$set).toEqual({
+      shopBatches: [expect.objectContaining({ enabled: true, order: 0 })],
+    });
+    // Omitting a placement must not wipe it.
+    expect(update.$set).not.toHaveProperty("productBatches");
+  });
+
+  it("clears a placement when an empty list is sent explicitly", async () => {
+    const { route, findOneAndUpdate } = await loadRoute();
+
+    await route.PUT(putRequest({ productBatches: [], shopBatches: [] }));
+
+    const [, update] = findOneAndUpdate.mock.calls[0];
+    expect(update.$set).toEqual({ productBatches: [], shopBatches: [] });
+  });
 });

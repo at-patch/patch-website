@@ -28,10 +28,10 @@ No task is `DONE` until its API/model work, UI work, automated tests, migration/
 | F1 | Geo-based multi-currency | IN REVIEW | F0 | Full stack | Cycle 2 | Vercel geo and five Stripe test currencies passed; app Checkout/webhook E2E remains |
 | F2 | Country/district and weight-based shipping | IN REVIEW | F0, F1 currency contract | Full stack | Cycles 1-2 | Legacy rates reviewed; new zones and approved product weights are still missing |
 | F3 | `/` opens Shop; Home remains separately accessible | DONE | D7 URL choice | Frontend | Cycle 1 | `/` is Shop; editorial Home is `/home`; build verified |
-| F4 | Default Top 10 Best Sellers on Shop | READY | F0 sales-query contract | Full stack | Cycle 2 | |
+| F4 | Admin-managed Shop sections (e.g. Top 10 Best Sellers) | IN REVIEW | None | Full stack | Cycle 2 | Scope changed 2026-08-09: sections are curated in admin, not auto-ranked. Reuses the homepage batch/carousel component |
 | F5 | Per-product Size Chart accordion/image | DONE | F0 | Full stack | Cycle 1 | Product validation/admin upload/storefront accordion implemented |
-| F6 | Buy Now direct checkout | READY | F0 checkout/cart contract | Full stack | Cycle 2 | |
-| F7 | Admin Top 10 Selling view | READY | Shared query from F4 | Full stack | Cycle 2 | |
+| F6 | Buy Now direct checkout | IN REVIEW | F0 checkout/cart contract | Full stack | Cycle 2 | Isolated persisted intent with 30-min TTL; saved cart provably preserved |
+| F7 | Admin Top 10 Selling view | IN REVIEW | None | Full stack | Cycle 2 | `/admin/top-selling` + dashboard card, shared `src/lib/best-sellers.ts` |
 | F8 | Admin order and payment-status filters | DONE | None | Full stack | Cycle 1 | URL filters, validation, pagination, and API tests implemented |
 | F9 | Raw-material/product tagging and reverse search | READY | F0 relationship design | Full stack | Cycles 2-3 | |
 | R1 | Regression, migration rehearsal, staging acceptance | BACKLOG | F1-F9 | QA + full stack | Cycle 3 | |
@@ -196,11 +196,35 @@ Acceptance:
 - Admin search finds countries/districts and updates persist.
 - Order, Stripe session, success page, invoice, and admin view agree on weight and shipping total.
 
-### F4 + F7. Shared best-seller ranking for Shop and Admin
+### F4 + F7. Curated Shop sections, informed by a shared best-seller report
 
-Status: `READY`
+Status: `IN REVIEW`
 
-Build one server-side aggregation service and reuse it in both places to avoid conflicting rankings.
+**Scope change (2026-08-09, client decision).** F4 no longer auto-ranks the Shop
+landing view. Instead, admins compose named sections and pick their products,
+reusing the existing homepage batch → carousel machinery. The sales aggregation
+still exists, but as the F7 admin *report* that tells admins which products to put
+in a curated “Top 10 Best Sellers” section. The workflow is: read the report →
+build a Product Batch → attach it to the Shop placement.
+
+This removes the risk of Shop and admin disagreeing, because there is now only one
+ranking surface (admin) and one merchandising surface (curated sections).
+
+Implemented:
+
+- `HomepageSettings.shopBatches` mirrors `productBatches`; `getShopProductSections()`
+  shares one populate/filter path with the homepage in `src/lib/homepage.ts`.
+- The admin PUT only rewrites a placement that is actually sent, so saving one
+  placement cannot wipe the other.
+- `SectionPlacementEditor` is a shared admin component used for both placements.
+- Curated sections render above the Shop catalog only on the bare view; any
+  `category`, `size`, `minPrice`, `maxPrice`, `search`, `sort`, or `page > 1`
+  hands the page back to the catalog (`src/lib/shop-view.ts`).
+- `src/lib/best-sellers.ts` ranks units from paid, non-refunded, non-cancelled
+  orders; ties break on canonical BDT revenue, then most recent sale. Used by both
+  `/admin/top-selling` and the dashboard card (limit raised 5 → 10).
+
+Original auto-ranking plan retained below for reference.
 
 Implementation:
 
@@ -225,7 +249,18 @@ Acceptance:
 
 ### F6. Buy Now direct checkout
 
-Status: `READY`
+Status: `IN REVIEW`
+
+Implemented as a persisted-but-short-lived client intent (`src/store/slices/checkoutSlice.ts`,
+30-minute TTL) rather than a server-side intent collection. This is safe because
+`POST /api/orders` already re-reads SKU, name, price, image, and weight from the
+product and recalculates shipping and coupons server-side — the intent carries only
+product + size + color, none of which is trusted as pricing input.
+
+`/checkout?mode=buy-now` renders exactly the intent item and ignores any cart coupon.
+`markCheckoutSubmitted` records which basket produced the pending order so the success
+page clears the intent without touching a saved cart. The sticky mobile bar
+deliberately stays a single quick action.
 
 Implementation:
 
@@ -403,3 +438,13 @@ Next:
 - Coinbase returned a live BDT-to-GBP snapshot successfully through the deployed currency endpoint.
 - Direct Stripe test-mode PaymentIntents succeeded for BDT, USD, EUR, GBP, and CNY using idempotent verification keys; every result had `livemode: false` and `status: succeeded`.
 - Full application Checkout/webhook E2E remains pending because product weights, ShippingZone data, staging database designation, and `STRIPE_WEBHOOK_SECRET` are not configured.
+
+### 2026-08-09 - Cycle 2, F4/F6/F7
+
+- **F4 rescoped and delivered.** Shop landing sections are now admin-curated (section name + products) instead of auto-ranked, reusing the homepage Product Batch → `ProductCarouselSection` pipeline. Added `HomepageSettings.shopBatches`, `getShopProductSections()`, a shared `SectionPlacementEditor` admin component, and the `isDefaultShopView` gate.
+- **F7 delivered.** Added `src/lib/best-sellers.ts` (units from paid, non-refunded, non-cancelled orders; ties on canonical BDT revenue, then most recent sale), a `/admin/top-selling` report with units/revenue/last-sold, and raised the dashboard card from 5 to 10 using the same service.
+- **F6 delivered.** Buy Now on both the one-of-one button and the variant picker creates an isolated 30-minute checkout intent, routes to `/checkout?mode=buy-now`, and leaves the persisted cart untouched. Expired intents show a safe explanatory state.
+- Admin `/admin/homepage-settings` is now titled **Storefront Settings** and edits both placements; its PUT only rewrites placements that are actually sent.
+- Verification: `pnpm lint` clean, `pnpm test` 155/155, `pnpm build` passing. Browser-verified the Buy Now flow: saved cart survived an isolated Buy Now checkout (cart badge and `persist:root` both confirmed), review step listed exactly one item, and a manually aged intent produced the expired state.
+- Not verified live: curated Shop sections and the top-selling report need a database — this worktree has no `MONGODB_URI`, so those paths were exercised by unit tests and build only.
+- Open for F4: decide whether an empty/unset Shop placement should fall back to anything, or keep today's behaviour of simply showing the catalog.

@@ -12,6 +12,7 @@ export const homepageSettingsUpdateSchema = z.object({
   primaryPromo: promoSchema.optional(),
   secondaryPromo: promoSchema.optional(),
   productBatches: z.array(z.unknown()).optional(),
+  shopBatches: z.array(z.unknown()).optional(),
 });
 
 export const aboutSettingsUpdateSchema = z.object({
