@@ -1,5 +1,7 @@
 import Image from "next/image";
 import { TrendingUp } from "lucide-react";
+// Imported from layout-ui, not ui: this is a server component, and passing
+// `icon={TrendingUp}` to a client component would fail to serialize.
 import {
   EmptyState,
   PageHeader,
@@ -7,7 +9,7 @@ import {
   tableCellClass,
   tableHeadClass,
   tableRowClass,
-} from "@/components/admin/ui";
+} from "@/components/admin/layout-ui";
 import { TOP_SELLING_LIMIT, getTopSellingProducts } from "@/lib/best-sellers";
 import { formatPrice } from "@/lib/utils";
 

@@ -4,58 +4,30 @@ import { useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TONE_CLASSES, type Tone } from "@/components/admin/layout-ui";
 
-const TONE_CLASSES = {
-  green: "border-patch-accent/20 bg-patch-accent/10 text-patch-accent",
-  teal: "border-patch-accent-2/20 bg-patch-accent-2/10 text-patch-accent-2",
-  rust: "border-patch-accent-3/20 bg-patch-accent-3/10 text-patch-accent-3",
-  neutral: "border-patch-line bg-patch-ink/5 text-patch-ink-muted",
-  red: "border-red-500/20 bg-red-500/10 text-red-600",
-} as const;
-
-export type Tone = keyof typeof TONE_CLASSES;
+// Re-exported so the many existing `from "@/components/admin/ui"` imports keep
+// working. Server components must import these from layout-ui directly.
+export {
+  Badge,
+  Card,
+  EmptyState,
+  PageHeader,
+  TableCard,
+  tableActionsCellClass,
+  tableActionsHeadClass,
+  tableCellClass,
+  tableCellCompact,
+  tableHeadCellClass,
+  tableHeadClass,
+  tableRowClass,
+  type Tone,
+} from "@/components/admin/layout-ui";
 
 const inputClass =
   "w-full rounded-xl border border-patch-line bg-patch-bg px-3.5 py-2.5 text-sm text-patch-ink outline-none transition placeholder:text-patch-ink-muted/60 focus:border-patch-accent focus:ring-2 focus:ring-patch-accent/15";
 
 const inputIconClass = "pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-patch-ink-muted/70";
-
-export function Card({ className, children }: { className?: string; children: React.ReactNode }) {
-  return (
-    <div className={cn("rounded-2xl border border-patch-line bg-patch-bg shadow-[0_1px_2px_rgba(19,19,16,0.04)]", className)}>
-      {children}
-    </div>
-  );
-}
-
-export function PageHeader({
-  icon: Icon,
-  title,
-  description,
-  action,
-}: {
-  icon?: LucideIcon;
-  title: string;
-  description?: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-4 border-b border-patch-line pb-6 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-3">
-        {Icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-patch-ink/5 text-patch-ink">
-            <Icon size={18} />
-          </div>
-        )}
-        <div>
-          <h1 className="font-heading text-xl font-semibold tracking-tight text-patch-ink sm:text-2xl">{title}</h1>
-          {description && <p className="mt-0.5 text-sm text-patch-ink-muted">{description}</p>}
-        </div>
-      </div>
-      {action}
-    </div>
-  );
-}
 
 const BUTTON_VARIANTS = {
   primary: "bg-patch-ink text-patch-bg hover:opacity-90 shadow-sm",
@@ -116,14 +88,6 @@ export function IconButton({
   );
 }
 
-export function Badge({ tone = "neutral", children }: { tone?: Tone; children: React.ReactNode }) {
-  return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium capitalize", TONE_CLASSES[tone])}>
-      {children}
-    </span>
-  );
-}
-
 export function StatusPillSelect({
   value,
   tone,
@@ -154,20 +118,6 @@ export function StatusPillSelect({
         </option>
       ))}
     </select>
-  );
-}
-
-export function EmptyState({ icon: Icon, title, description }: { icon: LucideIcon; title: string; description?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-patch-ink/5 text-patch-ink-muted">
-        <Icon size={20} />
-      </div>
-      <div>
-        <p className="text-sm font-medium text-patch-ink">{title}</p>
-        {description && <p className="mt-1 text-xs text-patch-ink-muted">{description}</p>}
-      </div>
-    </div>
   );
 }
 
@@ -246,38 +196,6 @@ export function FormSection({ title, children }: { title: string; children: Reac
     </div>
   );
 }
-
-export function TableCard({ children }: { children: React.ReactNode }) {
-  return (
-    <Card className="mt-6 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-[15px]">{children}</table>
-      </div>
-    </Card>
-  );
-}
-
-export const tableHeadClass = "border-b border-patch-line bg-patch-bg-alt/60 text-left text-xs font-semibold uppercase tracking-wider text-patch-ink-muted";
-export const tableRowClass = "transition-colors hover:bg-patch-ink/[0.02]";
-export const tableCellClass = "px-6 py-5";
-
-// Denser cell for the wide reference tables (inventory, patterns), where the
-// generous px-6 py-5 spends width that the columns themselves need.
-export const tableCellCompact = "px-4 py-3.5 align-middle";
-
-// Headers wrap onto two lines as soon as a table gets tight, which is what makes
-// a wide table look broken rather than merely wide.
-export const tableHeadCellClass = "whitespace-nowrap";
-
-/**
- * Pins the actions column to the right edge of the horizontal scroll container.
- * Without this a wide table simply clips its own row controls: the buttons are
- * still there, just scrolled out of sight past the last visible column.
- */
-export const tableActionsCellClass =
-  "sticky right-0 z-10 border-l border-patch-line bg-patch-bg";
-export const tableActionsHeadClass =
-  "sticky right-0 z-20 border-l border-patch-line bg-patch-bg-alt";
 
 export function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
