@@ -10,10 +10,14 @@ import {
   ErrorBanner,
   FormInput,
   FormTextarea,
+  IconButton,
   Modal,
   PageHeader,
   TableCard,
-  tableCellClass,
+  tableActionsCellClass,
+  tableActionsHeadClass,
+  tableCellCompact,
+  tableHeadCellClass,
   tableHeadClass,
   tableRowClass,
 } from "@/components/admin/ui";
@@ -231,22 +235,20 @@ export default function InventoryPage() {
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
-            <th className={tableCellClass}>Item ID</th>
-            <th className={tableCellClass}>Image</th>
-            <th className={tableCellClass}>Fabric Code</th>
-            <th className={tableCellClass}>Category</th>
-            <th className={tableCellClass}>Height</th>
-            <th className={tableCellClass}>Width</th>
-            <th className={tableCellClass}>Quantity</th>
-            <th className={tableCellClass}>Description</th>
-            <th className={tableCellClass}>Products</th>
-            <th className={tableCellClass}>Actions</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Item</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Fabric code</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Category</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Size (H×W)</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Qty</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Description</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Products</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass} ${tableActionsHeadClass} text-right`}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={10}>
+              <td colSpan={8}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -256,39 +258,51 @@ export default function InventoryPage() {
             </tr>
           ) : items.length === 0 ? (
             <tr>
-              <td colSpan={10}>
+              <td colSpan={8}>
                 <EmptyState icon={Recycle} title="No inventory items yet" description="Add raw-material items when they arrive." />
               </td>
             </tr>
           ) : (
             items.map((item) => (
               <tr key={item._id} className={tableRowClass}>
-                <td className={`${tableCellClass} font-medium text-patch-ink`}>{item.itemCode}</td>
-                <td className={tableCellClass}>
-                  <div className="relative h-12 w-12 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
-                    {item.image ? <Image src={item.image} alt="" fill className="object-cover" /> : <ImageIcon size={16} className="m-4 text-patch-ink-muted" />}
+                <td className={tableCellCompact}>
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
+                      {item.image ? (
+                        <Image src={item.image} alt="" fill sizes="44px" className="object-cover" />
+                      ) : (
+                        <ImageIcon size={14} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-patch-ink-muted" />
+                      )}
+                    </div>
+                    <span className="whitespace-nowrap font-medium text-patch-ink">{item.itemCode}</span>
                   </div>
                 </td>
-                <td className={`${tableCellClass} text-patch-ink`}>{item.fabricCode}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{item.category}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{item.heightInches}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{item.widthInches}</td>
-                <td className={`${tableCellClass} font-semibold text-patch-ink`}>{item.quantityPcs}</td>
-                <td className={`${tableCellClass} max-w-xs truncate text-patch-ink-muted`}>{item.description || "—"}</td>
-                <td className={tableCellClass}>
+                <td className={tableCellCompact}>
+                  <span className="block max-w-[11rem] truncate text-patch-ink" title={item.fabricCode}>
+                    {item.fabricCode}
+                  </span>
+                </td>
+                <td className={`${tableCellCompact} whitespace-nowrap text-patch-ink-muted`}>{item.category || "—"}</td>
+                <td className={`${tableCellCompact} whitespace-nowrap text-patch-ink-muted`}>
+                  {item.heightInches}
+                  <span className="mx-1 text-patch-ink-muted/50">×</span>
+                  {item.widthInches}
+                  <span className="ml-1 text-xs text-patch-ink-muted/70">in</span>
+                </td>
+                <td className={`${tableCellCompact} whitespace-nowrap font-semibold text-patch-ink`}>{item.quantityPcs}</td>
+                <td className={tableCellCompact}>
+                  <span className="block max-w-[14rem] truncate text-patch-ink-muted" title={item.description || undefined}>
+                    {item.description || "—"}
+                  </span>
+                </td>
+                <td className={tableCellCompact}>
                   <TagCell ids={item.productTags ?? []} options={productOptions} />
                 </td>
-                <td className={tableCellClass}>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="ghost" icon={Eye} onClick={() => setViewing(item)}>
-                      View
-                    </Button>
-                    <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(item)}>
-                      Edit
-                    </Button>
-                    <Button type="button" variant="ghost" icon={Trash2} onClick={() => removeItem(item._id)}>
-                      Delete
-                    </Button>
+                <td className={`${tableCellCompact} ${tableActionsCellClass}`}>
+                  <div className="flex justify-end gap-1">
+                    <IconButton icon={Eye} label={`View ${item.itemCode}`} onClick={() => setViewing(item)} />
+                    <IconButton icon={Pencil} label={`Edit ${item.itemCode}`} onClick={() => openEdit(item)} />
+                    <IconButton icon={Trash2} label={`Delete ${item.itemCode}`} tone="danger" onClick={() => removeItem(item._id)} />
                   </div>
                 </td>
               </tr>

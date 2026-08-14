@@ -261,6 +261,24 @@ export const tableHeadClass = "border-b border-patch-line bg-patch-bg-alt/60 tex
 export const tableRowClass = "transition-colors hover:bg-patch-ink/[0.02]";
 export const tableCellClass = "px-6 py-5";
 
+// Denser cell for the wide reference tables (inventory, patterns), where the
+// generous px-6 py-5 spends width that the columns themselves need.
+export const tableCellCompact = "px-4 py-3.5 align-middle";
+
+// Headers wrap onto two lines as soon as a table gets tight, which is what makes
+// a wide table look broken rather than merely wide.
+export const tableHeadCellClass = "whitespace-nowrap";
+
+/**
+ * Pins the actions column to the right edge of the horizontal scroll container.
+ * Without this a wide table simply clips its own row controls: the buttons are
+ * still there, just scrolled out of sight past the last visible column.
+ */
+export const tableActionsCellClass =
+  "sticky right-0 z-10 border-l border-patch-line bg-patch-bg";
+export const tableActionsHeadClass =
+  "sticky right-0 z-20 border-l border-patch-line bg-patch-bg-alt";
+
 export function ErrorBanner({ children }: { children: React.ReactNode }) {
   return (
     <p className="rounded-xl border border-red-500/20 bg-red-500/5 px-3.5 py-2.5 text-sm text-red-600">{children}</p>

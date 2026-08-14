@@ -10,10 +10,14 @@ import {
   EmptyState,
   ErrorBanner,
   FormInput,
+  IconButton,
   Modal,
   PageHeader,
   TableCard,
-  tableCellClass,
+  tableActionsCellClass,
+  tableActionsHeadClass,
+  tableCellCompact,
+  tableHeadCellClass,
   tableHeadClass,
   tableRowClass,
 } from "@/components/admin/ui";
@@ -249,23 +253,20 @@ export default function PatternsPage() {
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
-            <th className={tableCellClass}>Pattern Code</th>
-            <th className={tableCellClass}>Pattern Image</th>
-            <th className={tableCellClass}>Fabric Code</th>
-            <th className={tableCellClass}>Sample Code</th>
-            <th className={tableCellClass}>Fab-Amount 1</th>
-            <th className={tableCellClass}>Fabric Amount 2</th>
-            <th className={tableCellClass}>Size 1</th>
-            <th className={tableCellClass}>Size 2</th>
-            <th className={tableCellClass}>Products</th>
-            <th className={tableCellClass}>Materials</th>
-            <th className={tableCellClass}>Actions</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Pattern</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Fabric code</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Sample</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Fabric amounts</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Sizes</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Products</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass}`}>Materials</th>
+            <th className={`${tableCellCompact} ${tableHeadCellClass} ${tableActionsHeadClass} text-right`}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={11}>
+              <td colSpan={8}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -275,42 +276,54 @@ export default function PatternsPage() {
             </tr>
           ) : patterns.length === 0 ? (
             <tr>
-              <td colSpan={11}>
+              <td colSpan={8}>
                 <EmptyState icon={Scissors} title="No patterns yet" description="Add pattern records when the team starts tracking them." />
               </td>
             </tr>
           ) : (
             patterns.map((pattern) => (
               <tr key={pattern._id} className={tableRowClass}>
-                <td className={`${tableCellClass} font-medium text-patch-ink`}>{pattern.patternCode}</td>
-                <td className={tableCellClass}>
-                  <div className="relative h-12 w-12 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
-                    {pattern.patternImage ? <Image src={pattern.patternImage} alt="" fill className="object-cover" /> : <ImageIcon size={16} className="m-4 text-patch-ink-muted" />}
+                <td className={tableCellCompact}>
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
+                      {pattern.patternImage ? (
+                        <Image src={pattern.patternImage} alt="" fill sizes="44px" className="object-cover" />
+                      ) : (
+                        <ImageIcon size={14} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-patch-ink-muted" />
+                      )}
+                    </div>
+                    <span className="whitespace-nowrap font-medium text-patch-ink">{pattern.patternCode}</span>
                   </div>
                 </td>
-                <td className={`${tableCellClass} text-patch-ink`}>{pattern.fabricCode}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.sampleCode || "—"}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.fabAmount1}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.fabricAmount2}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.size1}</td>
-                <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.size2}</td>
-                <td className={tableCellClass}>
+                <td className={tableCellCompact}>
+                  <span className="block max-w-[13rem] truncate text-patch-ink" title={pattern.fabricCode}>
+                    {pattern.fabricCode}
+                  </span>
+                </td>
+                <td className={`${tableCellCompact} whitespace-nowrap text-patch-ink-muted`}>
+                  {pattern.sampleCode || "—"}
+                </td>
+                <td className={`${tableCellCompact} whitespace-nowrap text-patch-ink-muted`}>
+                  <span className="text-patch-ink">{pattern.fabAmount1}</span>
+                  <span className="mx-1.5 text-patch-ink-muted/50">/</span>
+                  {pattern.fabricAmount2}
+                </td>
+                <td className={`${tableCellCompact} whitespace-nowrap text-patch-ink-muted`}>
+                  {pattern.size1}
+                  <span className="mx-1.5 text-patch-ink-muted/50">/</span>
+                  {pattern.size2}
+                </td>
+                <td className={tableCellCompact}>
                   <TagCell ids={pattern.productTags ?? []} options={productOptions} />
                 </td>
-                <td className={tableCellClass}>
+                <td className={tableCellCompact}>
                   <TagCell ids={pattern.inventoryTags ?? []} options={inventoryOptions} tone="teal" />
                 </td>
-                <td className={tableCellClass}>
-                  <div className="flex flex-wrap gap-2">
-                    <Button type="button" variant="ghost" icon={Eye} onClick={() => setViewing(pattern)}>
-                      View
-                    </Button>
-                    <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(pattern)}>
-                      Edit
-                    </Button>
-                    <Button type="button" variant="ghost" icon={Trash2} onClick={() => removePattern(pattern._id)}>
-                      Delete
-                    </Button>
+                <td className={`${tableCellCompact} ${tableActionsCellClass}`}>
+                  <div className="flex justify-end gap-1">
+                    <IconButton icon={Eye} label={`View ${pattern.patternCode}`} onClick={() => setViewing(pattern)} />
+                    <IconButton icon={Pencil} label={`Edit ${pattern.patternCode}`} onClick={() => openEdit(pattern)} />
+                    <IconButton icon={Trash2} label={`Delete ${pattern.patternCode}`} tone="danger" onClick={() => removePattern(pattern._id)} />
                   </div>
                 </td>
               </tr>

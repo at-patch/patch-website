@@ -40,7 +40,10 @@ import {
   PageHeader,
   StatusPillSelect,
   TableCard,
+  tableActionsCellClass,
+  tableActionsHeadClass,
   tableCellClass,
+  tableHeadCellClass,
   tableHeadClass,
   tableRowClass,
   type Tone,
@@ -508,8 +511,8 @@ export default function AdminProductsPage() {
             <th className={tableCellClass}>Category</th>
             <th className={tableCellClass}>Price</th>
             <th className={tableCellClass}>Stock</th>
-            <th className={tableCellClass}>Status</th>
-            <th className={tableCellClass}></th>
+            <th className={`${tableCellClass} ${tableHeadCellClass}`}>Status</th>
+            <th className={`${tableCellClass} ${tableHeadCellClass} ${tableActionsHeadClass} text-right`}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
@@ -567,7 +570,7 @@ export default function AdminProductsPage() {
                     onChange={(v) => updateStatus(p._id, v as ProductStatus)}
                   />
                 </td>
-                <td className={`${tableCellClass} text-right`}>
+                <td className={`${tableCellClass} ${tableActionsCellClass} text-right`}>
                   <div className="flex justify-end gap-1">
                     <a
                       href={`/shop/${p.slug}`}
