@@ -34,6 +34,8 @@ export interface Pattern {
   fabricAmount2: string;
   size1: number;
   size2: number;
+  productTags?: string[];
+  inventoryTags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -46,6 +48,8 @@ export interface PatternInput {
   fabricAmount2: string;
   size1: number;
   size2: number;
+  productTags?: string[];
+  inventoryTags?: string[];
 }
 
 export interface ShippingCity {

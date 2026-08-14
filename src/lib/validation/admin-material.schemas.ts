@@ -21,6 +21,8 @@ export const patternCreateSchema = z.object({
   fabricAmount2: z.string().trim().min(1, "Fabric Amount 2 is required."),
   size1: z.number().min(0, "Size 1 must be 0 or more."),
   size2: z.number().min(0, "Size 2 must be 0 or more."),
+  productTags: z.array(z.string().trim().min(1)).optional(),
+  inventoryTags: z.array(z.string().trim().min(1)).optional(),
 });
 
 export const patternUpdateSchema = patternCreateSchema.partial();

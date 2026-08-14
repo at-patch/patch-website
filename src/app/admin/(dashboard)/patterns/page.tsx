@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { FileText, Hash, ImageIcon, Pencil, Plus, Ruler, Scissors, Trash2 } from "lucide-react";
+import { FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Scissors, Shirt, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import {
@@ -17,7 +17,9 @@ import {
   tableHeadClass,
   tableRowClass,
 } from "@/components/admin/ui";
-import type { ApiListResponse, Pattern } from "@/types";
+import { TagCell, TagPicker } from "@/components/admin/TagPicker";
+import { inventoryToTagOption, productToTagOption, type TagOption } from "@/lib/tag-options";
+import type { ApiListResponse, InventoryItem, Pattern, Product } from "@/types";
 
 const EMPTY_FORM = {
   patternImage: "",
@@ -27,10 +29,15 @@ const EMPTY_FORM = {
   fabricAmount2: "",
   size1: "",
   size2: "",
+  productTags: [] as string[],
+  inventoryTags: [] as string[],
 };
 
 export default function PatternsPage() {
   const [patterns, setPatterns] = useState<Pattern[]>([]);
+  const [productOptions, setProductOptions] = useState<TagOption[]>([]);
+  const [inventoryOptions, setInventoryOptions] = useState<TagOption[]>([]);
+  const [tagOptionsLoading, setTagOptionsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -44,9 +51,26 @@ export default function PatternsPage() {
     setLoading(false);
   };
 
+  // Both tag vocabularies back the pickers and the names shown in the table.
+  // Tags are stored as ids only, so without these the table could print only ObjectIds.
+  const loadTagOptions = async () => {
+    setTagOptionsLoading(true);
+    try {
+      const [products, inventory] = await Promise.all([
+        axiosInstance.get<ApiListResponse<Product>>("/admin/products?limit=200"),
+        axiosInstance.get<ApiListResponse<InventoryItem>>("/admin/inventory"),
+      ]);
+      setProductOptions(products.data.data.map(productToTagOption));
+      setInventoryOptions(inventory.data.data.map(inventoryToTagOption));
+    } finally {
+      setTagOptionsLoading(false);
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial admin fetch on mount
     load();
+    loadTagOptions();
   }, []);
 
   const resetForm = () => {
@@ -64,6 +88,8 @@ export default function PatternsPage() {
       fabricAmount2: pattern.fabricAmount2,
       size1: String(pattern.size1),
       size2: String(pattern.size2),
+      productTags: pattern.productTags ?? [],
+      inventoryTags: pattern.inventoryTags ?? [],
     });
     setEditingId(pattern._id);
     setShowForm(true);
@@ -132,6 +158,28 @@ export default function PatternsPage() {
           <FormInput icon={Hash} label="Fabric Amount 2" value={form.fabricAmount2} onChange={(v) => setForm({ ...form, fabricAmount2: v })} required />
           <FormInput icon={Ruler} label="Size 1" type="number" value={form.size1} onChange={(v) => setForm({ ...form, size1: v })} required />
           <FormInput icon={Ruler} label="Size 2" type="number" value={form.size2} onChange={(v) => setForm({ ...form, size2: v })} required />
+          <div className="grid gap-5 border-t border-patch-line pt-5 sm:col-span-3 sm:grid-cols-2">
+            <TagPicker
+              label="Products made from this pattern"
+              icon={Shirt}
+              options={productOptions}
+              value={form.productTags}
+              loading={tagOptionsLoading}
+              placeholder="Search products by name or SKU"
+              emptyText="No products to tag yet."
+              onChange={(productTags) => setForm({ ...form, productTags })}
+            />
+            <TagPicker
+              label="Raw materials this pattern uses"
+              icon={Recycle}
+              options={inventoryOptions}
+              value={form.inventoryTags}
+              loading={tagOptionsLoading}
+              placeholder="Search inventory by item or fabric code"
+              emptyText="No inventory items to tag yet."
+              onChange={(inventoryTags) => setForm({ ...form, inventoryTags })}
+            />
+          </div>
           <div className="flex items-center gap-3 sm:col-span-3">
             <Button type="submit">Save pattern</Button>
             <Button type="button" variant="ghost" onClick={resetForm}>
@@ -157,13 +205,15 @@ export default function PatternsPage() {
             <th className={tableCellClass}>Fabric Amount 2</th>
             <th className={tableCellClass}>Size 1</th>
             <th className={tableCellClass}>Size 2</th>
+            <th className={tableCellClass}>Products</th>
+            <th className={tableCellClass}>Materials</th>
             <th className={tableCellClass}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={11}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -173,7 +223,7 @@ export default function PatternsPage() {
             </tr>
           ) : patterns.length === 0 ? (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={11}>
                 <EmptyState icon={Scissors} title="No patterns yet" description="Add pattern records when the team starts tracking them." />
               </td>
             </tr>
@@ -192,6 +242,12 @@ export default function PatternsPage() {
                 <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.fabricAmount2}</td>
                 <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.size1}</td>
                 <td className={`${tableCellClass} text-patch-ink-muted`}>{pattern.size2}</td>
+                <td className={tableCellClass}>
+                  <TagCell ids={pattern.productTags ?? []} options={productOptions} />
+                </td>
+                <td className={tableCellClass}>
+                  <TagCell ids={pattern.inventoryTags ?? []} options={inventoryOptions} tone="teal" />
+                </td>
                 <td className={tableCellClass}>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(pattern)}>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Trash2 } from "lucide-react";
+import { FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Shirt, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import {
   Button,
@@ -18,8 +18,8 @@ import {
   tableRowClass,
 } from "@/components/admin/ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import { ProductTagPicker } from "@/components/admin/ProductTagPicker";
-import { countMissingProductTags, resolveProductTags, type TaggableProduct } from "@/lib/product-tags";
+import { TagCell, TagPicker } from "@/components/admin/TagPicker";
+import { productToTagOption, type TagOption } from "@/lib/tag-options";
 import type { ApiListResponse, InventoryItem, Product } from "@/types";
 
 const EMPTY_FORM = {
@@ -35,7 +35,7 @@ const EMPTY_FORM = {
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [products, setProducts] = useState<TaggableProduct[]>([]);
+  const [productOptions, setProductOptions] = useState<TagOption[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -56,7 +56,7 @@ export default function InventoryPage() {
     setProductsLoading(true);
     try {
       const { data } = await axiosInstance.get<ApiListResponse<Product>>("/admin/products?limit=200");
-      setProducts(data.data.map(({ _id, name, sku }) => ({ _id, name, sku })));
+      setProductOptions(data.data.map(productToTagOption));
     } finally {
       setProductsLoading(false);
     }
@@ -156,10 +156,14 @@ export default function InventoryPage() {
             <FormTextarea icon={FileText} label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           </div>
           <div className="border-t border-patch-line pt-5 sm:col-span-3">
-            <ProductTagPicker
-              products={products}
+            <TagPicker
+              label="Products made from this material"
+              icon={Shirt}
+              options={productOptions}
               value={form.productTags}
               loading={productsLoading}
+              placeholder="Search products by name or SKU"
+              emptyText="No products to tag yet."
               onChange={(productTags) => setForm({ ...form, productTags })}
             />
           </div>
@@ -225,7 +229,7 @@ export default function InventoryPage() {
                 <td className={`${tableCellClass} font-semibold text-patch-ink`}>{item.quantityPcs}</td>
                 <td className={`${tableCellClass} max-w-xs truncate text-patch-ink-muted`}>{item.description || "—"}</td>
                 <td className={tableCellClass}>
-                  <ProductTagCell ids={item.productTags ?? []} products={products} />
+                  <TagCell ids={item.productTags ?? []} options={productOptions} />
                 </td>
                 <td className={tableCellClass}>
                   <div className="flex flex-wrap gap-2">
@@ -242,37 +246,6 @@ export default function InventoryPage() {
           )}
         </tbody>
       </TableCard>
-    </div>
-  );
-}
-
-function ProductTagCell({ ids, products }: { ids: string[]; products: TaggableProduct[] }) {
-  const tagged = resolveProductTags(ids, products);
-  // A tagged product can be deleted without the tag being cleaned up, so say so
-  // rather than silently showing fewer chips than were saved.
-  const missing = countMissingProductTags(ids, products);
-
-  if (ids.length === 0) return <span className="text-patch-ink-muted">—</span>;
-
-  return (
-    <div className="flex max-w-[16rem] flex-wrap gap-1">
-      {tagged.map((product) => (
-        <span
-          key={product._id}
-          title={product.sku}
-          className="inline-flex max-w-full items-center truncate rounded-full border border-patch-accent/20 bg-patch-accent/10 px-2 py-0.5 text-[11px] text-patch-accent"
-        >
-          {product.name}
-        </span>
-      ))}
-      {missing > 0 && (
-        <span
-          title="Tagged products that have since been deleted"
-          className="inline-flex items-center rounded-full border border-patch-line bg-patch-ink/5 px-2 py-0.5 text-[11px] text-patch-ink-muted"
-        >
-          {missing} removed
-        </span>
-      )}
     </div>
   );
 }

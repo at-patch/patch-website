@@ -10,9 +10,16 @@ const PatternSchema = new Schema(
     fabricAmount2: { type: String, required: true, trim: true },
     size1: { type: Number, required: true, min: 0 },
     size2: { type: Number, required: true, min: 0 },
+    // Optional links: which products this pattern produces, and which raw-material
+    // inventory items it consumes. Both default to empty — tagging is never required.
+    productTags: { type: [Schema.Types.ObjectId], ref: "Product", default: [] },
+    inventoryTags: { type: [Schema.Types.ObjectId], ref: "InventoryItem", default: [] },
   },
   { timestamps: true }
 );
+
+PatternSchema.index({ productTags: 1 });
+PatternSchema.index({ inventoryTags: 1 });
 
 export type Pattern = InferSchemaType<typeof PatternSchema>;
 
