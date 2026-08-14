@@ -7,6 +7,7 @@ import axiosInstance from "@/lib/axios";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import {
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
@@ -250,6 +251,7 @@ export default function PatternsPage() {
         )}
       </DetailModal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -331,6 +333,79 @@ export default function PatternsPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      {/* Mobile: stacked cards. An eight-column reference table cannot be read on a phone. */}
+      <div className="mt-6 space-y-3 sm:hidden">
+        {loading ? (
+          [0, 1, 2].map((i) => (
+            <Card key={i} className="animate-pulse p-4">
+              <div className="h-4 w-24 rounded bg-patch-ink/5" />
+              <div className="mt-3 h-4 w-40 rounded bg-patch-ink/5" />
+              <div className="mt-3 h-8 w-full rounded bg-patch-ink/5" />
+            </Card>
+          ))
+        ) : patterns.length === 0 ? (
+          <Card>
+            <EmptyState icon={Scissors} title="No patterns yet" description="Add pattern records when the team starts tracking them." />
+          </Card>
+        ) : (
+          patterns.map((pattern) => (
+            <Card key={pattern._id} className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
+                  {pattern.patternImage ? (
+                    <Image src={pattern.patternImage} alt="" fill sizes="56px" className="object-cover" />
+                  ) : (
+                    <ImageIcon size={16} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-patch-ink-muted" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-patch-ink">{pattern.patternCode}</p>
+                  <p className="truncate text-xs text-patch-ink-muted">{pattern.fabricCode}</p>
+                  {pattern.sampleCode && (
+                    <p className="truncate text-xs text-patch-ink-muted">Sample {pattern.sampleCode}</p>
+                  )}
+                </div>
+              </div>
+
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-patch-line pt-3 text-xs">
+                <div>
+                  <dt className="text-patch-ink-muted">Fabric amounts</dt>
+                  <dd className="mt-0.5 text-patch-ink">{pattern.fabAmount1} / {pattern.fabricAmount2}</dd>
+                </div>
+                <div>
+                  <dt className="text-patch-ink-muted">Sizes</dt>
+                  <dd className="mt-0.5 text-patch-ink">{pattern.size1} / {pattern.size2}</dd>
+                </div>
+              </dl>
+
+              {((pattern.productTags?.length ?? 0) > 0 || (pattern.inventoryTags?.length ?? 0) > 0) && (
+                <div className="mt-3 space-y-2 border-t border-patch-line pt-3">
+                  {(pattern.productTags?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-xs text-patch-ink-muted">Products</p>
+                      <TagCell ids={pattern.productTags ?? []} options={productOptions} />
+                    </div>
+                  )}
+                  {(pattern.inventoryTags?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="mb-1.5 text-xs text-patch-ink-muted">Materials</p>
+                      <TagCell ids={pattern.inventoryTags ?? []} options={inventoryOptions} tone="teal" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-end gap-1 border-t border-patch-line pt-3">
+                <IconButton icon={Eye} label={`View ${pattern.patternCode}`} onClick={() => setViewing(pattern)} />
+                <IconButton icon={Pencil} label={`Edit ${pattern.patternCode}`} onClick={() => openEdit(pattern)} />
+                <IconButton icon={Trash2} label={`Delete ${pattern.patternCode}`} tone="danger" onClick={() => removePattern(pattern._id)} />
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

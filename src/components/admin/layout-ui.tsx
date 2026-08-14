@@ -38,7 +38,7 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-4 border-b border-patch-line pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 border-b border-patch-line pb-5 sm:flex-row sm:items-center sm:justify-between sm:pb-6">
       <div className="flex items-center gap-3">
         {Icon && (
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-patch-ink/5 text-patch-ink">

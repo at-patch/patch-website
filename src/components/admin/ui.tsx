@@ -153,7 +153,7 @@ export function Modal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 pt-16 sm:pt-24">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-3 pt-6 sm:p-4 sm:pt-16 lg:pt-24">
       <div className="fixed inset-0 bg-patch-ink/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
       <div
         role="dialog"
@@ -161,7 +161,7 @@ export function Modal({
         aria-label={title}
         className="relative w-full max-w-2xl rounded-2xl border border-patch-line bg-patch-bg shadow-2xl ring-1 ring-black/5"
       >
-        <div className="flex items-center justify-between gap-4 border-b border-patch-line px-6 py-5">
+        <div className="flex items-center justify-between gap-3 border-b border-patch-line px-4 py-4 sm:px-6 sm:py-5">
           <div className="flex items-center gap-3">
             {Icon && (
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-patch-accent/10 text-patch-accent">
@@ -182,7 +182,7 @@ export function Modal({
             <X size={16} />
           </button>
         </div>
-        <div className="max-h-[calc(100vh-10rem)] overflow-y-auto p-6">{children}</div>
+        <div className="max-h-[calc(100vh-9rem)] overflow-y-auto p-4 sm:max-h-[calc(100vh-13rem)] sm:p-6">{children}</div>
       </div>
     </div>
   );

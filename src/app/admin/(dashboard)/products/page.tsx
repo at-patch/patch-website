@@ -29,6 +29,7 @@ import { ImageUploader } from "@/components/admin/ImageUploader";
 import { DetailModal, DetailSection, orDash } from "@/components/admin/DetailModal";
 import {
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
@@ -504,6 +505,7 @@ export default function AdminProductsPage() {
         )}
       </DetailModal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -591,6 +593,75 @@ export default function AdminProductsPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      {/* Mobile: stacked cards. */}
+      <div className="mt-6 space-y-3 sm:hidden">
+        {loading ? (
+          [0, 1, 2].map((i) => (
+            <Card key={i} className="animate-pulse p-4">
+              <div className="h-16 w-full rounded bg-patch-ink/5" />
+            </Card>
+          ))
+        ) : products.length === 0 ? (
+          <Card>
+            <EmptyState icon={Package} title="No products yet" description="Add your first SKU to start selling." />
+          </Card>
+        ) : (
+          products.map((p) => (
+            <Card key={p._id} className="p-4">
+              <div className="flex items-start gap-3">
+                {p.images?.[0] ? (
+                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-patch-line">
+                    <Image src={p.images[0]} alt={p.name} fill sizes="64px" className="object-cover" />
+                  </div>
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-patch-line text-patch-ink-muted/60">
+                    <ImageOff size={18} />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-patch-ink">{p.name}</p>
+                  <p className="mt-0.5 truncate font-mono text-xs text-patch-ink-muted">{p.sku}</p>
+                  <p className="mt-0.5 text-xs capitalize text-patch-ink-muted">
+                    {p.category} · {p.rarity === "multi-quantity" ? "Multi-quantity" : "1-of-1"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-3 flex items-center justify-between border-t border-patch-line pt-3 text-sm">
+                <span className="font-medium text-patch-ink">{formatPrice(p.price, p.currency)}</span>
+                <span className="text-patch-ink-muted">
+                  {p.rarity === "multi-quantity" ? `${getTotalQuantity(p)} in stock` : "1-of-1"}
+                </span>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-patch-line pt-3">
+                <StatusPillSelect
+                  value={p.status}
+                  tone={STATUS_TONE[p.status]}
+                  options={STATUSES}
+                  onChange={(v) => updateStatus(p._id, v as ProductStatus)}
+                />
+                <div className="flex gap-1">
+                  <a
+                    href={`/shop/${p.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="View in shop"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-patch-ink-muted transition hover:bg-patch-ink/5 hover:text-patch-ink"
+                  >
+                    <ExternalLink size={16} />
+                  </a>
+                  <IconButton icon={Eye} label="View product" onClick={() => setViewing(p)} />
+                  <IconButton icon={Pencil} label="Edit product" onClick={() => startEdit(p)} />
+                  <IconButton icon={Trash2} label="Delete product" tone="danger" onClick={() => deleteProduct(p._id, p.name)} />
+                </div>
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Eye, FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Shirt, Tr
 import axiosInstance from "@/lib/axios";
 import {
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
@@ -232,6 +233,7 @@ export default function InventoryPage() {
         )}
       </DetailModal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -310,6 +312,72 @@ export default function InventoryPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      {/* Mobile: stacked cards. An eight-column reference table cannot be read on a phone. */}
+      <div className="mt-6 space-y-3 sm:hidden">
+        {loading ? (
+          [0, 1, 2].map((i) => (
+            <Card key={i} className="animate-pulse p-4">
+              <div className="h-4 w-24 rounded bg-patch-ink/5" />
+              <div className="mt-3 h-4 w-40 rounded bg-patch-ink/5" />
+              <div className="mt-3 h-8 w-full rounded bg-patch-ink/5" />
+            </Card>
+          ))
+        ) : items.length === 0 ? (
+          <Card>
+            <EmptyState icon={Recycle} title="No inventory items yet" description="Add raw-material items when they arrive." />
+          </Card>
+        ) : (
+          items.map((item) => (
+            <Card key={item._id} className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-patch-line bg-patch-bg-alt">
+                  {item.image ? (
+                    <Image src={item.image} alt="" fill sizes="56px" className="object-cover" />
+                  ) : (
+                    <ImageIcon size={16} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-patch-ink-muted" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-patch-ink">{item.itemCode}</p>
+                  <p className="truncate text-xs text-patch-ink-muted">
+                    {item.fabricCode}
+                    {item.category ? ` · ${item.category}` : ""}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold text-patch-ink">{item.quantityPcs} pcs</span>
+              </div>
+
+              <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-2 border-t border-patch-line pt-3 text-xs">
+                <div>
+                  <dt className="text-patch-ink-muted">Size</dt>
+                  <dd className="mt-0.5 text-patch-ink">{item.heightInches} × {item.widthInches} in</dd>
+                </div>
+                {item.description && (
+                  <div className="min-w-0 flex-1">
+                    <dt className="text-patch-ink-muted">Description</dt>
+                    <dd className="mt-0.5 truncate text-patch-ink">{item.description}</dd>
+                  </div>
+                )}
+              </dl>
+
+              {(item.productTags?.length ?? 0) > 0 && (
+                <div className="mt-3 border-t border-patch-line pt-3">
+                  <p className="mb-1.5 text-xs text-patch-ink-muted">Products</p>
+                  <TagCell ids={item.productTags ?? []} options={productOptions} />
+                </div>
+              )}
+
+              <div className="mt-3 flex justify-end gap-1 border-t border-patch-line pt-3">
+                <IconButton icon={Eye} label={`View ${item.itemCode}`} onClick={() => setViewing(item)} />
+                <IconButton icon={Pencil} label={`Edit ${item.itemCode}`} onClick={() => openEdit(item)} />
+                <IconButton icon={Trash2} label={`Delete ${item.itemCode}`} tone="danger" onClick={() => removeItem(item._id)} />
+              </div>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

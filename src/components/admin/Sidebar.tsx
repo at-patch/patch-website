@@ -41,7 +41,11 @@ const LINKS = [
   { href: "/admin/admins", label: "Admins", icon: UserCog },
 ];
 
-export function Sidebar() {
+/**
+ * Nav contents only — the surrounding <aside> (rail) or drawer panel is supplied
+ * by AdminShell, so both presentations render exactly the same links.
+ */
+export function SidebarNav() {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -52,7 +56,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-patch-line bg-patch-bg-alt/40 px-4 py-6">
+    <>
       <div className="mb-8 flex items-center gap-2.5 px-2">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-patch-ink font-heading text-sm font-semibold text-patch-bg">
           P
@@ -63,7 +67,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1">
+      <nav className="-mx-1 flex-1 space-y-1 overflow-y-auto px-1">
         {LINKS.map((link) => {
           const active = link.exact ? pathname === link.href : pathname.startsWith(link.href);
           return (
@@ -91,6 +95,6 @@ export function Sidebar() {
         <LogOut size={16} />
         Sign out
       </button>
-    </aside>
+    </>
   );
 }
