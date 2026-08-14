@@ -91,12 +91,16 @@ async function main() {
       note: "Shipped settles the debt, however old the order is.",
     },
     {
-      slug: "boundary-exact",
+      // Deliberately 6 hours inside the window rather than exactly on it: a fixture
+      // seeded at precisely now-SLA is overdue seconds later, so it could never be
+      // observed as Pending. The strict "exactly N days is not yet overdue" boundary
+      // is pinned in src/lib/order-buckets.test.ts, where time can be frozen.
+      slug: "inside-window-edge",
       status: "placed",
       paymentStatus: "paid",
-      ageMs: OVERDUE_AFTER_DAYS * DAY_MS,
+      ageMs: OVERDUE_AFTER_DAYS * DAY_MS - 6 * 60 * 60 * 1000,
       expect: "pending",
-      note: `Exactly ${OVERDUE_AFTER_DAYS} days — the boundary is strict, so not yet overdue.`,
+      note: `6 hours short of ${OVERDUE_AFTER_DAYS} days — still inside the window (stays Pending for ~6h after seeding).`,
     },
     {
       slug: "boundary-just-past",

@@ -22,11 +22,11 @@ checks are complete.
 |---|---|---|---|---|---|
 | O1 | Bucket contract + pure tab logic (`src/lib/order-buckets.ts`) | DONE | D11-D14 | Cycle 1 | `src/lib/order-buckets.test.ts`, 21 tests incl. the 120-case matrix |
 | O2 | Admin orders API: `tab` filter + tab counts | DONE | O1 | Cycle 1 | `route.test.ts` 13 tests; both original filter tests unchanged |
-| O3 | Compound index for tab queries | DONE | O1 | Cycle 1 | `{status, paymentStatus, createdAt: -1}` in `src/lib/models/Order.ts`; `explain()` not yet run against a real cluster |
+| O3 | Compound index for tab queries | DONE | O1 | Cycle 1 | `explain()` verified: IXSCAN on all four tabs, no COLLSCAN. Pending/Completed/Cancelled use the new `status_1_paymentStatus_1_createdAt_-1`; Overdue picks the pre-existing `paymentStatus_1_status_1_createdAt_-1` (equality prefix — equally good) |
 | O4 | Tab bar component with live counts | DONE | O2 | Cycle 1 | `src/components/admin/OrderTabBar.tsx`, ARIA tablist + arrow keys, URL-synced |
 | O5 | Per-tab table rework (columns, badges, mobile, skeletons) | DONE | O4 | Cycle 2 | Column-set per tab, sticky header, `sm:hidden` card list |
 | O6 | Row actions preserved (status, tracking, refund) | DONE | O5 | Cycle 2 | Status kept on all four tabs — see deviation D18 |
-| O7 | Acceptance + regression pass | DONE (automated) | O1-O6 | Cycle 2 | lint + 205 tests + build green; `pnpm seed:order-buckets` written, manual DB pass still owed |
+| O7 | Acceptance + regression pass | DONE | O1-O6 | Cycle 2 | lint + 205 tests + build green. DB pass on 2026-08-14 against 23 orders (15 real + 8 seeded): counts sum to total, zero disjointness violations collection-wide, all 8 fixtures in exactly their expected tab, Overdue oldest-first. Browser eyeball of the tab bar still owed. |
 | O8 | Order search box | BACKLOG | O2 | Later | Deliberately out of scope for this round |
 
 ## Deviations taken during implementation
@@ -37,6 +37,7 @@ checks are complete.
 | D19 | Completed shows a "Delivered" date, Cancelled a "Cancelled" date | Both show "Last update" (`updatedAt`) | The `Order` model has no status-transition timestamps — only `createdAt`/`updatedAt`. A "Delivered" header over `updatedAt` would be wrong the moment anyone edits tracking afterwards. Real delivered/cancelled timestamps need a schema field plus backfill, which this plan explicitly excludes. |
 | D20 | O7 says extend `scripts/seed-dev-commerce-data.ts` | New `scripts/seed-order-buckets.ts` (`pnpm seed:order-buckets`) | That script is a weights-and-zones dry-run tool with its own report shape; order fixtures would muddy it. The new script self-checks its fixtures against `bucketOf` before writing. |
 | D21 | O2 replaces hand-rolled `Number(...)` coercion with Zod | Enums are strict (400, as before); `page`/`limit` keep a lenient fallback via `.catch()` | Turning a stray `?page=abc` in a bookmarked URL into a 400 is a regression in behaviour that the plan did not ask for. |
+| D22 | O7 seeds "an order at exactly the SLA boundary" | Seeds one 6 hours *inside* the window instead | A fixture written at exactly `now - SLA` is overdue seconds after it is written, so it can never be observed as Pending — the first DB run duly found it in Overdue. The strict boundary ("exactly N days is not yet overdue") is pinned in `order-buckets.test.ts`, where time is frozen; a seeded database cannot hold that assertion still. |
 
 ## Decisions
 
