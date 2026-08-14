@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Shirt, Trash2 } from "lucide-react";
+import { Eye, FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Shirt, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import {
   Button,
@@ -19,6 +19,7 @@ import {
 } from "@/components/admin/ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import { TagCell, TagPicker } from "@/components/admin/TagPicker";
+import { DetailModal, DetailSection, orDash } from "@/components/admin/DetailModal";
 import { productToTagOption, type TagOption } from "@/lib/tag-options";
 import type { ApiListResponse, InventoryItem, Product } from "@/types";
 
@@ -42,6 +43,7 @@ export default function InventoryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<InventoryItem | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -181,6 +183,51 @@ export default function InventoryPage() {
         </form>
       </Modal>
 
+      <DetailModal
+        open={Boolean(viewing)}
+        onClose={() => setViewing(null)}
+        icon={Recycle}
+        title={viewing?.itemCode ?? ""}
+        subtitle="Raw-material inventory item"
+        images={viewing?.image ? [viewing.image] : []}
+        fields={
+          viewing
+            ? [
+                { label: "Item code", value: viewing.itemCode },
+                { label: "Fabric code", value: orDash(viewing.fabricCode) },
+                { label: "Category", value: orDash(viewing.category) },
+                { label: "Quantity", value: `${viewing.quantityPcs} pcs` },
+                { label: "Height", value: `${viewing.heightInches} in` },
+                { label: "Width", value: `${viewing.widthInches} in` },
+                { label: "Added", value: new Date(viewing.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) },
+                { label: "Last updated", value: new Date(viewing.updatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) },
+                { label: "Description", value: orDash(viewing.description), wide: true },
+              ]
+            : []
+        }
+        footer={
+          viewing && (
+            <Button
+              type="button"
+              icon={Pencil}
+              onClick={() => {
+                const item = viewing;
+                setViewing(null);
+                openEdit(item);
+              }}
+            >
+              Edit item
+            </Button>
+          )
+        }
+      >
+        {viewing && (
+          <DetailSection title="Products made from this material">
+            <TagCell ids={viewing.productTags ?? []} options={productOptions} />
+          </DetailSection>
+        )}
+      </DetailModal>
+
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -233,6 +280,9 @@ export default function InventoryPage() {
                 </td>
                 <td className={tableCellClass}>
                   <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="ghost" icon={Eye} onClick={() => setViewing(item)}>
+                      View
+                    </Button>
                     <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(item)}>
                       Edit
                     </Button>

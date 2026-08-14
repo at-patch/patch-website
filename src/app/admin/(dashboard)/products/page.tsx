@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import {
   BookOpen,
   ExternalLink,
+  Eye,
   FileText,
   Hash,
   ImageOff,
@@ -25,6 +26,7 @@ import axiosInstance from "@/lib/axios";
 import { SIZES } from "@/lib/constants";
 import { formatPrice, getTotalQuantity } from "@/lib/utils";
 import { ImageUploader } from "@/components/admin/ImageUploader";
+import { DetailModal, DetailSection, orDash } from "@/components/admin/DetailModal";
 import {
   Button,
   EmptyState,
@@ -186,6 +188,7 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(() => createEmptyForm());
+  const [viewing, setViewing] = useState<Product | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -409,6 +412,95 @@ export default function AdminProductsPage() {
         </form>
       </Modal>
 
+      <DetailModal
+        open={Boolean(viewing)}
+        onClose={() => setViewing(null)}
+        icon={Package}
+        title={viewing?.name ?? ""}
+        subtitle={viewing ? `${viewing.sku} · ${viewing.rarity === "multi-quantity" ? "Multi-quantity" : "1-of-1"}` : undefined}
+        images={viewing?.images ?? []}
+        fields={
+          viewing
+            ? [
+                { label: "SKU", value: viewing.sku },
+                { label: "Slug", value: viewing.slug },
+                { label: "Price", value: formatPrice(viewing.price, viewing.currency) },
+                { label: "Category", value: <span className="capitalize">{orDash(viewing.category)}</span> },
+                { label: "Status", value: <span className="capitalize">{viewing.status}</span> },
+                {
+                  label: "Stock",
+                  value:
+                    viewing.rarity === "multi-quantity"
+                      ? `${getTotalQuantity(viewing)} in stock`
+                      : viewing.status === "available"
+                        ? "1 available"
+                        : "Not available",
+                },
+                { label: "Size", value: orDash(viewing.size) },
+                { label: "Weight", value: viewing.weightKg ? `${viewing.weightKg} kg` : orDash("") },
+                { label: "Batch label", value: orDash(viewing.batchLabel) },
+                { label: "Materials", value: orDash(viewing.materials?.join(", ")) },
+                { label: "Description", value: orDash(viewing.description), wide: true },
+                { label: "Story", value: orDash(viewing.story), wide: true },
+              ]
+            : []
+        }
+        footer={
+          viewing && (
+            <>
+              <Button
+                type="button"
+                icon={Pencil}
+                onClick={() => {
+                  const product = viewing;
+                  setViewing(null);
+                  startEdit(product);
+                }}
+              >
+                Edit product
+              </Button>
+              <a
+                href={`/shop/${viewing.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-patch-ink-muted underline underline-offset-4 hover:text-patch-ink"
+              >
+                <ExternalLink size={14} /> View in shop
+              </a>
+            </>
+          )
+        }
+      >
+        {viewing?.rarity === "multi-quantity" && (
+          <DetailSection title="Variants">
+            {viewing.variants?.length ? (
+              <div className="overflow-hidden rounded-xl border border-patch-line">
+                <table className="w-full text-sm">
+                  <thead className="border-b border-patch-line bg-patch-bg-alt/60 text-left text-[11px] font-semibold uppercase tracking-wider text-patch-ink-muted">
+                    <tr>
+                      <th className="px-4 py-2.5">Size</th>
+                      <th className="px-4 py-2.5">Color</th>
+                      <th className="px-4 py-2.5 text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-patch-line">
+                    {viewing.variants.map((variant) => (
+                      <tr key={`${variant.size}-${variant.color}`}>
+                        <td className="px-4 py-2.5 text-patch-ink">{variant.size}</td>
+                        <td className="px-4 py-2.5 text-patch-ink-muted">{variant.color || "—"}</td>
+                        <td className="px-4 py-2.5 text-right text-patch-ink">{variant.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-patch-ink-muted">No variants recorded.</p>
+            )}
+          </DetailSection>
+        )}
+      </DetailModal>
+
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -486,6 +578,7 @@ export default function AdminProductsPage() {
                     >
                       <ExternalLink size={16} />
                     </a>
+                    <IconButton icon={Eye} label="View product" onClick={() => setViewing(p)} />
                     <IconButton icon={Pencil} label="Edit product" onClick={() => startEdit(p)} />
                     <IconButton icon={Trash2} label="Delete product" tone="danger" onClick={() => deleteProduct(p._id, p.name)} />
                   </div>
