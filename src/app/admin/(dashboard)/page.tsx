@@ -6,6 +6,7 @@ import InventoryItemModel from "@/lib/models/InventoryItem";
 import OrderModel from "@/lib/models/Order";
 import { Card, PageHeader } from "@/components/admin/ui";
 import { RevenueChart } from "@/components/admin/RevenueChart";
+import OrdersTabTable from "@/components/admin/OrdersTabTable";
 import { getTopSellingProducts } from "@/lib/best-sellers";
 import { formatPrice } from "@/lib/utils";
 
@@ -142,6 +143,8 @@ export default async function AdminDashboardPage() {
           )}
         </Card>
       </div>
+
+      <OrdersTabTable />
 
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {inventoryCards.map((card) => (
