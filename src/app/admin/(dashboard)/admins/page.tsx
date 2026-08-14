@@ -6,11 +6,15 @@ import axiosInstance from "@/lib/axios";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
   FormSelect,
   IconButton,
+  MobileActions,
+  MobileCards,
+  MobileField,
   Modal,
   PageHeader,
   TableCard,
@@ -155,6 +159,7 @@ export default function AdminAdminsPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -216,6 +221,42 @@ export default function AdminAdminsPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={admins}
+        loading={loading}
+        empty={<EmptyState icon={UserCog} title="No admins yet" />}
+        renderItem={(admin) => {
+          const isSelf = admin.email === currentEmail;
+          return (
+            <Card key={admin._id} className="p-4">
+              <p className="font-medium text-patch-ink">
+                {admin.name} {isSelf && <span className="text-xs text-patch-ink-muted">(you)</span>}
+              </p>
+              <p className="mt-0.5 break-all text-xs text-patch-ink-muted">{admin.email}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-patch-line pt-3">
+                <button onClick={() => toggleRole(admin)} disabled={isSelf} title={isSelf ? "You can't change your own role" : "Toggle role"}>
+                  <Badge tone={admin.role === "owner" ? "green" : "neutral"}>{admin.role}</Badge>
+                </button>
+                <button onClick={() => toggleActive(admin)} disabled={isSelf} title={isSelf ? "You can't deactivate yourself" : "Toggle active"}>
+                  <Badge tone={admin.active ? "green" : "red"}>{admin.active ? "active" : "disabled"}</Badge>
+                </button>
+              </div>
+              <dl className="mt-3 border-t border-patch-line pt-3">
+                <MobileField label="Last login">
+                  {admin.lastLoginAt ? new Date(admin.lastLoginAt).toLocaleDateString() : "Never"}
+                </MobileField>
+              </dl>
+              {!isSelf && (
+                <MobileActions>
+                  <IconButton icon={Trash2} label="Remove admin" tone="danger" onClick={() => deleteAdmin(admin)} />
+                </MobileActions>
+              )}
+            </Card>
+          );
+        }}
+      />
     </div>
   );
 }

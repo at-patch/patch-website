@@ -3,7 +3,10 @@ import { TrendingUp } from "lucide-react";
 // Imported from layout-ui, not ui: this is a server component, and passing
 // `icon={TrendingUp}` to a client component would fail to serialize.
 import {
+  Card,
   EmptyState,
+  MobileCards,
+  MobileField,
   PageHeader,
   TableCard,
   tableCellClass,
@@ -54,6 +57,7 @@ export default async function TopSellingPage() {
         </div>
       )}
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -105,11 +109,44 @@ export default async function TopSellingPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
 
       <p className="mt-4 text-xs text-patch-ink-muted">
         Use this report to decide which products belong in the curated “Top 10 Best Sellers” section on
         Storefront Settings → Shop page sections.
       </p>
+
+      <MobileCards
+        items={products}
+        empty={
+          <EmptyState
+            icon={TrendingUp}
+            title="No paid orders yet"
+            description="Sales ranking appears once orders are confirmed as paid by the Stripe webhook."
+          />
+        }
+        renderItem={(product, index) => (
+          <Card key={product.productId} className="p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 w-5 shrink-0 text-sm text-patch-ink-muted">{index + 1}.</span>
+              {product.image ? (
+                <Image src={product.image} alt="" width={40} height={40} className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+              ) : (
+                <span className="h-10 w-10 shrink-0 rounded-lg bg-patch-ink/5" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-patch-ink">{product.name}</p>
+                <p className="truncate text-xs text-patch-ink-muted">{product.sku || "—"}</p>
+              </div>
+            </div>
+            <dl className="mt-3 grid grid-cols-3 gap-3 border-t border-patch-line pt-3">
+              <MobileField label="Units">{product.units}</MobileField>
+              <MobileField label="Revenue">{formatPrice(product.revenue)}</MobileField>
+              <MobileField label="Last sold">{formatDate(product.lastSoldAt)}</MobileField>
+            </dl>
+          </Card>
+        )}
+      />
     </div>
   );
 }

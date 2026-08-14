@@ -109,3 +109,61 @@ export const tableActionsCellClass =
   "sticky right-0 z-10 border-l border-patch-line bg-patch-bg";
 export const tableActionsHeadClass =
   "sticky right-0 z-20 border-l border-patch-line bg-patch-bg-alt";
+
+/**
+ * Mobile counterpart to TableCard: stacked cards below `sm`, nothing from `sm` up.
+ *
+ * Lives here rather than in ui.tsx so server components can use it too — a
+ * "use client" version would take `renderItem` as a prop, and a function cannot
+ * cross the server/client boundary.
+ */
+export function MobileCards<T>({
+  items,
+  loading,
+  empty,
+  renderItem,
+  skeletonRows = 3,
+}: {
+  items: T[];
+  loading?: boolean;
+  empty: React.ReactNode;
+  renderItem: (item: T, index: number) => React.ReactNode;
+  skeletonRows?: number;
+}) {
+  return (
+    <div className="mt-6 space-y-3 sm:hidden">
+      {loading ? (
+        Array.from({ length: skeletonRows }, (_, i) => (
+          <Card key={i} className="animate-pulse p-4">
+            <div className="h-4 w-28 rounded bg-patch-ink/5" />
+            <div className="mt-3 h-4 w-44 rounded bg-patch-ink/5" />
+            <div className="mt-3 h-8 w-full rounded bg-patch-ink/5" />
+          </Card>
+        ))
+      ) : items.length === 0 ? (
+        <Card>{empty}</Card>
+      ) : (
+        items.map(renderItem)
+      )}
+    </div>
+  );
+}
+
+/** Label/value pair for the stacked cards. */
+export function MobileField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-patch-ink-muted">{label}</dt>
+      <dd className="mt-0.5 truncate text-sm text-patch-ink">{children}</dd>
+    </div>
+  );
+}
+
+/** Bottom action strip for a stacked card. */
+export function MobileActions({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-3 flex flex-wrap items-center justify-end gap-1 border-t border-patch-line pt-3">
+      {children}
+    </div>
+  );
+}

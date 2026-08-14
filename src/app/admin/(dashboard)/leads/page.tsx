@@ -12,6 +12,10 @@ import {
   tableCellClass,
   tableHeadClass,
   tableRowClass,
+  Card,
+  MobileActions,
+  MobileCards,
+  MobileField,
 } from "@/components/admin/ui";
 import type { ApiListResponse, Lead } from "@/types";
 
@@ -50,6 +54,7 @@ export default function AdminLeadsPage() {
         description="Contacts captured by the chat assistant for follow-up."
       />
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -111,6 +116,33 @@ export default function AdminLeadsPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={leads}
+        loading={loading}
+        empty={<EmptyState icon={UserPlus} title="No leads yet" description="Chat leads captured with consent will show up here." />}
+        renderItem={(lead) => (
+          <Card key={lead._id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-patch-ink">{lead.name}</p>
+                <p className="truncate text-xs text-patch-ink-muted">{lead.contact}</p>
+              </div>
+              <button onClick={() => toggleResolved(lead)} title="Toggle followed-up">
+                <Badge tone={lead.resolved ? "green" : "rust"}>{lead.resolved ? "followed up" : "new"}</Badge>
+              </button>
+            </div>
+            <dl className="mt-3 grid gap-3 border-t border-patch-line pt-3">
+              <MobileField label="Interest">{lead.interest || "—"}</MobileField>
+              <MobileField label="Captured">{new Date(lead.createdAt).toLocaleDateString()}</MobileField>
+            </dl>
+            <MobileActions>
+              <IconButton icon={Trash2} label="Delete lead" tone="danger" onClick={() => deleteLead(lead._id, lead.name)} />
+            </MobileActions>
+          </Card>
+        )}
+      />
     </div>
   );
 }

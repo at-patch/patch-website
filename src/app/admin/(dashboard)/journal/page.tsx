@@ -6,12 +6,14 @@ import axiosInstance from "@/lib/axios";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
   FormSelect,
   FormTextarea,
   IconButton,
+  MobileCards,
   Modal,
   PageHeader,
   TableCard,
@@ -122,6 +124,7 @@ export default function AdminJournalPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -166,6 +169,25 @@ export default function AdminJournalPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={posts}
+        loading={loading}
+        empty={<EmptyState icon={BookOpen} title="No posts yet" description="Publish your first journal entry." />}
+        renderItem={(post) => (
+          <Card key={post._id} className="p-4">
+            <p className="font-medium text-patch-ink">{post.title}</p>
+            <p className="mt-1 text-xs capitalize text-patch-ink-muted">{post.category.replace("-", " ")}</p>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-patch-line pt-3">
+              <button onClick={() => togglePublished(post._id, post.published)}>
+                <Badge tone={post.published ? "green" : "neutral"}>{post.published ? "Published" : "Draft"}</Badge>
+              </button>
+              <IconButton icon={Trash2} label="Delete post" tone="danger" onClick={() => deletePost(post._id)} />
+            </div>
+          </Card>
+        )}
+      />
     </div>
   );
 }

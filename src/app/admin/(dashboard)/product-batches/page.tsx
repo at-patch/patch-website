@@ -19,12 +19,15 @@ import axiosInstance from "@/lib/axios";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
   FormSection,
   FormTextarea,
   IconButton,
+  MobileActions,
+  MobileCards,
   Modal,
   PageHeader,
   TableCard,
@@ -291,6 +294,7 @@ export default function ProductBatchesPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -357,6 +361,47 @@ export default function ProductBatchesPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={batches}
+        loading={loading}
+        empty={<EmptyState icon={Boxes} title="No product batches yet" description="Create a batch to power homepage carousel sections." />}
+        renderItem={(batch) => (
+          <Card key={batch._id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="min-w-0 flex-1 font-medium text-patch-ink">{batch.title}</p>
+              <Badge tone={batch.active ? "green" : "neutral"}>{batch.active ? "Active" : "Inactive"}</Badge>
+            </div>
+            {batch.description && <p className="mt-1 text-sm text-patch-ink-muted">{batch.description}</p>}
+            <div className="mt-3 flex items-center gap-2 border-t border-patch-line pt-3">
+              <Layers size={15} className="text-patch-ink-muted" />
+              <span className="text-sm text-patch-ink-muted">{batch.products.length} products</span>
+              <div className="ml-1 flex -space-x-2">
+                {batch.products.slice(0, 4).map((product) => (
+                  product.images?.[0] ? (
+                    <div key={product._id} className="relative h-7 w-7 overflow-hidden rounded-full border border-patch-bg bg-patch-bg">
+                      <Image src={product.images[0]} alt={product.name} fill sizes="28px" className="object-cover" />
+                    </div>
+                  ) : (
+                    <div key={product._id} className="flex h-7 w-7 items-center justify-center rounded-full border border-patch-bg bg-patch-bg-alt text-patch-ink-muted">
+                      <ImageOff size={12} />
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+            <MobileActions>
+              <IconButton icon={ToggleLeft} label={batch.active ? "Deactivate" : "Activate"} onClick={async () => {
+                await axiosInstance.patch(`/admin/product-batches/${batch._id}`, { active: !batch.active });
+                load();
+              }} />
+              <IconButton icon={Pencil} label="Edit batch" onClick={() => startEdit(batch)} />
+              <IconButton icon={Trash2} label="Delete batch" tone="danger" onClick={() => deleteBatch(batch)} />
+            </MobileActions>
+          </Card>
+        )}
+      />
     </div>
   );
 }

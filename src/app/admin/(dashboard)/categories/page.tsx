@@ -7,10 +7,13 @@ import axiosInstance from "@/lib/axios";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import {
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
   IconButton,
+  MobileActions,
+  MobileCards,
   Modal,
   PageHeader,
   TableCard,
@@ -144,6 +147,7 @@ export default function AdminCategoriesPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -199,6 +203,37 @@ export default function AdminCategoriesPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={categories}
+        loading={loading}
+        empty={<EmptyState icon={Tags} title="No categories yet" description="Create your first category to start organizing products." />}
+        renderItem={(c) => (
+          <Card key={c._id} className="p-4">
+            <div className="flex items-start gap-3">
+              {c.image ? (
+                <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl ring-1 ring-patch-line">
+                  <Image src={c.image} alt={c.name} fill sizes="56px" className="object-cover" />
+                </div>
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-dashed border-patch-line text-patch-ink-muted/60">
+                  <ImageOff size={18} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-patch-ink">{c.name}</p>
+                <p className="truncate font-mono text-xs text-patch-ink-muted">{c.slug}</p>
+                <p className="mt-0.5 text-xs text-patch-ink-muted">Order {c.order}</p>
+              </div>
+            </div>
+            <MobileActions>
+              <IconButton icon={Pencil} label="Edit category" onClick={() => startEdit(c)} />
+              <IconButton icon={Trash2} label="Delete category" tone="danger" onClick={() => deleteCategory(c._id, c.name)} />
+            </MobileActions>
+          </Card>
+        )}
+      />
     </div>
   );
 }

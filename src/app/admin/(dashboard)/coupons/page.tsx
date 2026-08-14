@@ -7,11 +7,15 @@ import { formatPrice } from "@/lib/utils";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
   FormSelect,
   IconButton,
+  MobileActions,
+  MobileCards,
+  MobileField,
   Modal,
   PageHeader,
   TableCard,
@@ -166,6 +170,7 @@ export default function AdminCouponsPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -227,6 +232,37 @@ export default function AdminCouponsPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={coupons}
+        loading={loading}
+        empty={<EmptyState icon={Percent} title="No coupons yet" description="Create a code to run your first promotion." />}
+        renderItem={(c) => (
+          <Card key={c._id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-mono text-sm font-medium text-patch-ink">{c.code}</p>
+              {!c.active ? (
+                <Badge tone="neutral">inactive</Badge>
+              ) : isExpired(c) ? (
+                <Badge tone="rust">expired</Badge>
+              ) : (
+                <Badge tone="green">active</Badge>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-patch-ink">{describeValue(c)}</p>
+            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-patch-line pt-3">
+              <MobileField label="Min. subtotal">{c.minSubtotal > 0 ? formatPrice(c.minSubtotal) : "—"}</MobileField>
+              <MobileField label="Usage">{describeUsage(c)}</MobileField>
+              <MobileField label="Expires">{c.expiresAt ? new Date(c.expiresAt).toLocaleDateString() : "—"}</MobileField>
+            </dl>
+            <MobileActions>
+              <IconButton icon={Pencil} label="Edit coupon" onClick={() => startEdit(c)} />
+              <IconButton icon={Trash2} label="Delete coupon" tone="danger" onClick={() => deleteCoupon(c._id, c.code)} />
+            </MobileActions>
+          </Card>
+        )}
+      />
     </div>
   );
 }

@@ -6,7 +6,9 @@ import axiosInstance from "@/lib/axios";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
+  MobileCards,
   PageHeader,
   TableCard,
   tableCellClass,
@@ -40,6 +42,7 @@ export default function AdminContactPage() {
     <div>
       <PageHeader icon={Mail} title="Contact Messages" description="Submissions from the storefront contact form." />
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -98,6 +101,32 @@ export default function AdminContactPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={messages}
+        loading={loading}
+        empty={<EmptyState icon={Mail} title="No messages yet" description="Contact form submissions will show up here." />}
+        renderItem={(msg) => (
+          <Card key={msg._id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-patch-ink">{msg.name}</p>
+                <p className="truncate text-xs text-patch-ink-muted">{msg.email}</p>
+              </div>
+              <Badge tone={msg.resolved ? "green" : "rust"}>{msg.resolved ? "Resolved" : "Open"}</Badge>
+            </div>
+            <p className="mt-3 border-t border-patch-line pt-3 text-sm font-medium text-patch-ink">{msg.subject}</p>
+            <p className="mt-1 text-sm text-patch-ink-muted">{msg.message}</p>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-patch-line pt-3">
+              <span className="text-xs text-patch-ink-muted">{new Date(msg.createdAt).toLocaleDateString()}</span>
+              <Button variant="outline" className="px-3 py-1.5 text-xs" onClick={() => toggleResolved(msg._id, !msg.resolved)}>
+                Mark {msg.resolved ? "open" : "resolved"}
+              </Button>
+            </div>
+          </Card>
+        )}
+      />
     </div>
   );
 }

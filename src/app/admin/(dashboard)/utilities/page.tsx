@@ -7,9 +7,11 @@ import { formatPrice } from "@/lib/utils";
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
   ErrorBanner,
   FormInput,
+  MobileCards,
   Modal,
   PageHeader,
   TableCard,
@@ -152,6 +154,7 @@ export default function UtilitiesPage() {
         </form>
       </Modal>
 
+      <div className="hidden sm:block">
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -232,6 +235,64 @@ export default function UtilitiesPage() {
           )}
         </tbody>
       </TableCard>
+      </div>
+
+      <MobileCards
+        items={filtered}
+        loading={loading}
+        empty={<EmptyState icon={MapPin} title="No shipping cities" description="Seed Bangladesh cities or add a custom city to enable checkout shipping." />}
+        renderItem={(city) => (
+          <Card key={city._id} className="p-4">
+            <div className="space-y-3">
+              <label className="block text-xs text-patch-ink-muted">
+                City
+                <input
+                  defaultValue={city.name}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next && next !== city.name) updateCity(city, { name: next });
+                  }}
+                  className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm font-medium text-patch-ink outline-none focus:border-patch-accent"
+                  aria-label={`City name for ${city.name}`}
+                />
+              </label>
+              <label className="block text-xs text-patch-ink-muted">
+                Division
+                <input
+                  defaultValue={city.division ?? ""}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next !== (city.division ?? "")) updateCity(city, { division: next });
+                  }}
+                  className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm text-patch-ink-muted outline-none focus:border-patch-accent"
+                  aria-label={`Division for ${city.name}`}
+                />
+              </label>
+              <label className="block text-xs text-patch-ink-muted">
+                Shipping cost
+                <input
+                  type="number"
+                  defaultValue={city.shippingCost}
+                  onBlur={(e) => {
+                    const next = Number(e.target.value);
+                    if (next !== city.shippingCost) updateCity(city, { shippingCost: next });
+                  }}
+                  className="mt-1 w-full rounded-lg border border-patch-line bg-transparent px-3 py-2 text-sm text-patch-ink outline-none focus:border-patch-accent"
+                  aria-label={`Shipping cost for ${city.name}`}
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-patch-line pt-3">
+              <button type="button" onClick={() => updateCity(city, { isActive: !city.isActive })}>
+                <Badge tone={city.isActive ? "green" : "neutral"}>{city.isActive ? "Active" : "Inactive"}</Badge>
+              </button>
+              <Button type="button" variant="ghost" icon={Trash2} onClick={() => removeCity(city._id)}>
+                Delete
+              </Button>
+            </div>
+          </Card>
+        )}
+      />
     </div>
   );
 }
