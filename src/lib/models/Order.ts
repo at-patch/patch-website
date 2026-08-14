@@ -77,6 +77,11 @@ const OrderSchema = new Schema(
 );
 
 OrderSchema.index({ paymentStatus: 1, status: 1, createdAt: -1 });
+// Serves the /admin/orders tab queries and all four $facet count branches: every tab
+// filters on status, overdue adds paymentStatus, and all of them sort on createdAt.
+// The status-leading prefix is what the status-only tabs need — the paymentStatus-leading
+// index above cannot serve them.
+OrderSchema.index({ status: 1, paymentStatus: 1, createdAt: -1 });
 OrderSchema.index({ "items.product": 1, paymentStatus: 1 });
 
 export type Order = InferSchemaType<typeof OrderSchema>;

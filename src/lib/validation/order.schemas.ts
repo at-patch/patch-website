@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SIZES } from "@/lib/constants";
+import { ORDER_TABS } from "@/lib/order-buckets";
 
 const phoneSchema = z
   .string()
@@ -48,6 +49,17 @@ export const shippingQuoteSchema = z.object({
   countryCode: z.string().trim().length(2).transform((value) => value.toUpperCase()),
   districtSlug: z.string().trim().optional(),
   courierClass: z.enum(["premium", "express", "economy"]).optional(),
+});
+
+// Query validation for the admin orders list. Bad enum values are a 400 (as they were
+// before), while page/limit keep their historically lenient fallback so a stray value
+// in a bookmarked URL still renders a list instead of an error.
+export const adminOrderQuerySchema = z.object({
+  status: z.enum(["placed", "confirmed", "processing", "shipped", "delivered", "cancelled"]).optional(),
+  paymentStatus: z.enum(["pending", "paid", "failed", "refunded"]).optional(),
+  tab: z.enum(ORDER_TABS).optional(),
+  page: z.coerce.number().int().min(1).catch(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).catch(50).default(50),
 });
 
 // Only fields the admin UI actually edits — unknown keys are stripped by

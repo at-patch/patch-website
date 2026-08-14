@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "migrate:shipping": "tsx scripts/backfill-shipping-foundation.ts",
     "seed:courier-zones": "tsx scripts/seed-courier-zones.ts",
-    "seed:dev": "tsx scripts/seed-dev-commerce-data.ts"
+    "seed:dev": "tsx scripts/seed-dev-commerce-data.ts",
+    "seed:order-buckets": "tsx scripts/seed-order-buckets.ts"
   },
   "dependencies": {
     "@ai-sdk/google-vertex": "^5.0.12",

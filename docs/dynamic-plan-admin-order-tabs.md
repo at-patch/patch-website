@@ -1,9 +1,10 @@
 # Dynamic implementation plan - admin order tabs
 
-Status: **Ready**
+Status: **Delivered (O1-O7)**
 Scope: **Four-tab order triage on `/admin/orders`**
 Planning baseline: 2026-08-11
 Baseline commit: `0141e39`
+Implemented: 2026-08-14
 
 ## How to use this plan
 
@@ -19,14 +20,23 @@ checks are complete.
 
 | ID | Deliverable | Status | Depends on | Target | Evidence / notes |
 |---|---|---|---|---|---|
-| O1 | Bucket contract + pure tab logic (`src/lib/order-buckets.ts`) | READY | D11-D14 | Cycle 1 | Pure functions, no DB. The testable core. |
-| O2 | Admin orders API: `tab` filter + tab counts | READY | O1 | Cycle 1 | Extends the existing route; keeps current params working |
-| O3 | Compound index for tab queries | READY | O1 | Cycle 1 | `{status, paymentStatus, createdAt}` |
-| O4 | Tab bar component with live counts | READY | O2 | Cycle 1 | ARIA tablist, URL-synced |
-| O5 | Per-tab table rework (columns, badges, mobile, skeletons) | READY | O4 | Cycle 2 | The "looks modern" work |
-| O6 | Row actions preserved (status, tracking, refund) | READY | O5 | Cycle 2 | Regression guard on existing behaviour |
-| O7 | Acceptance + regression pass | BACKLOG | O1-O6 | Cycle 2 | |
+| O1 | Bucket contract + pure tab logic (`src/lib/order-buckets.ts`) | DONE | D11-D14 | Cycle 1 | `src/lib/order-buckets.test.ts`, 21 tests incl. the 120-case matrix |
+| O2 | Admin orders API: `tab` filter + tab counts | DONE | O1 | Cycle 1 | `route.test.ts` 13 tests; both original filter tests unchanged |
+| O3 | Compound index for tab queries | DONE | O1 | Cycle 1 | `{status, paymentStatus, createdAt: -1}` in `src/lib/models/Order.ts`; `explain()` not yet run against a real cluster |
+| O4 | Tab bar component with live counts | DONE | O2 | Cycle 1 | `src/components/admin/OrderTabBar.tsx`, ARIA tablist + arrow keys, URL-synced |
+| O5 | Per-tab table rework (columns, badges, mobile, skeletons) | DONE | O4 | Cycle 2 | Column-set per tab, sticky header, `sm:hidden` card list |
+| O6 | Row actions preserved (status, tracking, refund) | DONE | O5 | Cycle 2 | Status kept on all four tabs — see deviation D18 |
+| O7 | Acceptance + regression pass | DONE (automated) | O1-O6 | Cycle 2 | lint + 205 tests + build green; `pnpm seed:order-buckets` written, manual DB pass still owed |
 | O8 | Order search box | BACKLOG | O2 | Later | Deliberately out of scope for this round |
+
+## Deviations taken during implementation
+
+| ID | Plan said | What shipped | Why |
+|---|---|---|---|
+| D18 | O5's column tables omit Status on Completed and Cancelled | Status control kept on all four tabs | O5's layout sketch and O6's "status action survives" conflict. Dropping the control removes the only way to correct a mis-marked delivered/cancelled order, which is a functional regression, so O6 won. |
+| D19 | Completed shows a "Delivered" date, Cancelled a "Cancelled" date | Both show "Last update" (`updatedAt`) | The `Order` model has no status-transition timestamps — only `createdAt`/`updatedAt`. A "Delivered" header over `updatedAt` would be wrong the moment anyone edits tracking afterwards. Real delivered/cancelled timestamps need a schema field plus backfill, which this plan explicitly excludes. |
+| D20 | O7 says extend `scripts/seed-dev-commerce-data.ts` | New `scripts/seed-order-buckets.ts` (`pnpm seed:order-buckets`) | That script is a weights-and-zones dry-run tool with its own report shape; order fixtures would muddy it. The new script self-checks its fixtures against `bucketOf` before writing. |
+| D21 | O2 replaces hand-rolled `Number(...)` coercion with Zod | Enums are strict (400, as before); `page`/`limit` keep a lenient fallback via `.catch()` | Turning a stray `?page=abc` in a bookmarked URL into a 400 is a regression in behaviour that the plan did not ask for. |
 
 ## Decisions
 
