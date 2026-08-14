@@ -18,7 +18,9 @@ import {
   tableRowClass,
 } from "@/components/admin/ui";
 import { ImageUploader } from "@/components/admin/ImageUploader";
-import type { ApiListResponse, InventoryItem } from "@/types";
+import { ProductTagPicker } from "@/components/admin/ProductTagPicker";
+import { countMissingProductTags, resolveProductTags, type TaggableProduct } from "@/lib/product-tags";
+import type { ApiListResponse, InventoryItem, Product } from "@/types";
 
 const EMPTY_FORM = {
   image: "",
@@ -28,10 +30,13 @@ const EMPTY_FORM = {
   widthInches: "",
   quantityPcs: "",
   description: "",
+  productTags: [] as string[],
 };
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [products, setProducts] = useState<TaggableProduct[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,9 +50,22 @@ export default function InventoryPage() {
     setLoading(false);
   };
 
+  // The product list backs both the tag picker and the names shown in the table.
+  // Tags are stored as ids only, so without this the table could only print ObjectIds.
+  const loadProducts = async () => {
+    setProductsLoading(true);
+    try {
+      const { data } = await axiosInstance.get<ApiListResponse<Product>>("/admin/products?limit=200");
+      setProducts(data.data.map(({ _id, name, sku }) => ({ _id, name, sku })));
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch on mount
     load();
+    loadProducts();
   }, []);
 
   const resetForm = () => {
@@ -65,6 +83,7 @@ export default function InventoryPage() {
       widthInches: String(item.widthInches),
       quantityPcs: String(item.quantityPcs),
       description: item.description ?? "",
+      productTags: item.productTags ?? [],
     });
     setEditingId(item._id);
     setShowForm(true);
@@ -136,6 +155,14 @@ export default function InventoryPage() {
           <div className="sm:col-span-3">
             <FormTextarea icon={FileText} label="Description" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
           </div>
+          <div className="border-t border-patch-line pt-5 sm:col-span-3">
+            <ProductTagPicker
+              products={products}
+              value={form.productTags}
+              loading={productsLoading}
+              onChange={(productTags) => setForm({ ...form, productTags })}
+            />
+          </div>
           <div className="flex items-center gap-3 sm:col-span-3">
             <Button type="submit">Save item</Button>
             <Button type="button" variant="ghost" onClick={resetForm}>
@@ -161,13 +188,14 @@ export default function InventoryPage() {
             <th className={tableCellClass}>Width</th>
             <th className={tableCellClass}>Quantity</th>
             <th className={tableCellClass}>Description</th>
+            <th className={tableCellClass}>Products</th>
             <th className={tableCellClass}>Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-patch-line">
           {loading ? (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={10}>
                 <div className="animate-pulse space-y-3 p-6">
                   {[0, 1, 2].map((i) => (
                     <div key={i} className="h-14 rounded-lg bg-patch-ink/5" />
@@ -177,7 +205,7 @@ export default function InventoryPage() {
             </tr>
           ) : items.length === 0 ? (
             <tr>
-              <td colSpan={9}>
+              <td colSpan={10}>
                 <EmptyState icon={Recycle} title="No inventory items yet" description="Add raw-material items when they arrive." />
               </td>
             </tr>
@@ -197,6 +225,9 @@ export default function InventoryPage() {
                 <td className={`${tableCellClass} font-semibold text-patch-ink`}>{item.quantityPcs}</td>
                 <td className={`${tableCellClass} max-w-xs truncate text-patch-ink-muted`}>{item.description || "—"}</td>
                 <td className={tableCellClass}>
+                  <ProductTagCell ids={item.productTags ?? []} products={products} />
+                </td>
+                <td className={tableCellClass}>
                   <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(item)}>
                       Edit
@@ -211,6 +242,37 @@ export default function InventoryPage() {
           )}
         </tbody>
       </TableCard>
+    </div>
+  );
+}
+
+function ProductTagCell({ ids, products }: { ids: string[]; products: TaggableProduct[] }) {
+  const tagged = resolveProductTags(ids, products);
+  // A tagged product can be deleted without the tag being cleaned up, so say so
+  // rather than silently showing fewer chips than were saved.
+  const missing = countMissingProductTags(ids, products);
+
+  if (ids.length === 0) return <span className="text-patch-ink-muted">—</span>;
+
+  return (
+    <div className="flex max-w-[16rem] flex-wrap gap-1">
+      {tagged.map((product) => (
+        <span
+          key={product._id}
+          title={product.sku}
+          className="inline-flex max-w-full items-center truncate rounded-full border border-patch-accent/20 bg-patch-accent/10 px-2 py-0.5 text-[11px] text-patch-accent"
+        >
+          {product.name}
+        </span>
+      ))}
+      {missing > 0 && (
+        <span
+          title="Tagged products that have since been deleted"
+          className="inline-flex items-center rounded-full border border-patch-line bg-patch-ink/5 px-2 py-0.5 text-[11px] text-patch-ink-muted"
+        >
+          {missing} removed
+        </span>
+      )}
     </div>
   );
 }
