@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Scissors, Shirt, Trash2 } from "lucide-react";
+import { Eye, FileText, Hash, ImageIcon, Pencil, Plus, Recycle, Ruler, Scissors, Shirt, Trash2 } from "lucide-react";
 import axiosInstance from "@/lib/axios";
 import { ImageUploader } from "@/components/admin/ImageUploader";
 import {
@@ -18,6 +18,7 @@ import {
   tableRowClass,
 } from "@/components/admin/ui";
 import { TagCell, TagPicker } from "@/components/admin/TagPicker";
+import { DetailModal, DetailSection, orDash } from "@/components/admin/DetailModal";
 import { inventoryToTagOption, productToTagOption, type TagOption } from "@/lib/tag-options";
 import type { ApiListResponse, InventoryItem, Pattern, Product } from "@/types";
 
@@ -43,6 +44,7 @@ export default function PatternsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<Pattern | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -194,6 +196,56 @@ export default function PatternsPage() {
         </form>
       </Modal>
 
+      <DetailModal
+        open={Boolean(viewing)}
+        onClose={() => setViewing(null)}
+        icon={Scissors}
+        title={viewing?.patternCode ?? ""}
+        subtitle="Pattern record"
+        images={viewing?.patternImage ? [viewing.patternImage] : []}
+        fields={
+          viewing
+            ? [
+                { label: "Pattern code", value: viewing.patternCode },
+                { label: "Fabric code", value: orDash(viewing.fabricCode) },
+                { label: "Sample code", value: orDash(viewing.sampleCode) },
+                { label: "Fab-Amount 1", value: orDash(viewing.fabAmount1) },
+                { label: "Fabric Amount 2", value: orDash(viewing.fabricAmount2) },
+                { label: "Size 1", value: viewing.size1 },
+                { label: "Size 2", value: viewing.size2 },
+                { label: "Added", value: new Date(viewing.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) },
+                { label: "Last updated", value: new Date(viewing.updatedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) },
+              ]
+            : []
+        }
+        footer={
+          viewing && (
+            <Button
+              type="button"
+              icon={Pencil}
+              onClick={() => {
+                const pattern = viewing;
+                setViewing(null);
+                openEdit(pattern);
+              }}
+            >
+              Edit pattern
+            </Button>
+          )
+        }
+      >
+        {viewing && (
+          <>
+            <DetailSection title="Products made from this pattern">
+              <TagCell ids={viewing.productTags ?? []} options={productOptions} />
+            </DetailSection>
+            <DetailSection title="Raw materials this pattern uses">
+              <TagCell ids={viewing.inventoryTags ?? []} options={inventoryOptions} tone="teal" />
+            </DetailSection>
+          </>
+        )}
+      </DetailModal>
+
       <TableCard>
         <thead className={tableHeadClass}>
           <tr>
@@ -250,6 +302,9 @@ export default function PatternsPage() {
                 </td>
                 <td className={tableCellClass}>
                   <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="ghost" icon={Eye} onClick={() => setViewing(pattern)}>
+                      View
+                    </Button>
                     <Button type="button" variant="ghost" icon={Pencil} onClick={() => openEdit(pattern)}>
                       Edit
                     </Button>
