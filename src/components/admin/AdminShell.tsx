@@ -36,8 +36,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-patch-bg">
-      {/* Desktop: a permanent rail. */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-patch-line bg-patch-bg-alt/40 px-4 py-6 lg:flex">
+      {/* Desktop: a permanent rail, pinned to the viewport. Without sticky + h-screen
+          it is only as tall as its own contents, so scrolling a long page carries the
+          nav away and leaves the rail's background ending mid-page. */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-patch-line bg-patch-bg-alt/40 px-4 py-6 lg:flex">
         <SidebarNav />
       </aside>
 
