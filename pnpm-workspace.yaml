@@ -2,11 +2,10 @@ packages:
   - .
 
 allowBuilds:
-  esbuild: true
+  esbuild: false
   sharp: true
   unrs-resolver: true
 
 onlyBuiltDependencies:
-  - esbuild
   - sharp
   - unrs-resolver
