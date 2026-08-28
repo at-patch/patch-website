@@ -7,7 +7,9 @@ export function logError(message: string, error: unknown, context: LogContext = 
   const serialized =
     error instanceof Error
       ? { name: error.name, message: error.message, stack: error.stack }
-      : { message: String(error) };
+      : typeof error === "object" && error !== null
+        ? { ...error }
+        : { message: String(error) };
 
   console.error(
     JSON.stringify({

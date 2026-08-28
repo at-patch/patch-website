@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudinary } from "@/lib/cloudinary";
 import { requireAdmin } from "@/lib/require-admin";
+import { logError } from "@/lib/logger";
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
@@ -53,7 +54,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { url: result.secure_url } }, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Upload failed.";
+    logError("admin.upload.failed", error, { folder: targetFolder });
+    const message =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message?: unknown }).message)
+          : "Upload failed.";
     return NextResponse.json({ success: false, message }, { status: 500 });
   }
 }
