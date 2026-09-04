@@ -1,3 +1,5 @@
+import { isCloudflareIp } from "./cloudflare-ips";
+
 export const SUPPORTED_CURRENCIES = ["BDT", "USD", "EUR", "GBP", "CNY"] as const;
 export type SupportedCurrency = (typeof SUPPORTED_CURRENCIES)[number];
 
@@ -42,15 +44,23 @@ export function currencyForCountry(countryCode?: string | null): SupportedCurren
 }
 
 // Vercel injects VERCEL=1 itself, so x-vercel-ip-country can only be set by
-// their edge network. Hostinger has no such platform signal — TRUST_CLOUDFLARE_GEO
-// must be set manually, and only after the origin is locked down to Cloudflare's
-// IP ranges (or Authenticated Origin Pulls), since anyone hitting the origin
-// directly could otherwise spoof cf-ipcountry.
-export function isTrustedGeoPlatform() {
-  return process.env.VERCEL === "1" || process.env.TRUST_CLOUDFLARE_GEO === "1";
+// their edge network. Hostinger has no such platform signal, and its shared
+// hosting has no firewall/vhost access to restrict the origin to Cloudflare's
+// IPs at the network level — so when TRUST_CLOUDFLARE_GEO=1, we additionally
+// verify the immediate connecting peer (x-real-ip, set by Hostinger's own
+// edge and not client-spoofable) is actually a Cloudflare IP before trusting
+// cf-ipcountry. Without that check, anyone hitting the origin directly with a
+// forged cf-ipcountry header would bypass Cloudflare entirely.
+export function isTrustedGeoPlatform(connectingIp?: string | null) {
+  if (process.env.VERCEL === "1") return true;
+  if (process.env.TRUST_CLOUDFLARE_GEO === "1") return isCloudflareIp(connectingIp);
+  return false;
 }
 
-export function detectCountryFromHeaders(headers: Headers, trustedPlatform = isTrustedGeoPlatform()) {
+export function detectCountryFromHeaders(
+  headers: Headers,
+  trustedPlatform = isTrustedGeoPlatform(headers.get("x-real-ip"))
+) {
   if (!trustedPlatform) return process.env.DEFAULT_COUNTRY_CODE?.toUpperCase() || "BD";
   const country = headers.get("x-vercel-ip-country") || headers.get("cf-ipcountry");
   return country?.toUpperCase() || "BD";

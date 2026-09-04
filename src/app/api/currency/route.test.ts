@@ -46,6 +46,31 @@ describe("currency preference route", () => {
     }
   });
 
+  it("trusts cf-ipcountry only when the peer IP is a real Cloudflare IP", async () => {
+    const previous = process.env.TRUST_CLOUDFLARE_GEO;
+    process.env.TRUST_CLOUDFLARE_GEO = "1";
+    try {
+      const fromCloudflare = await GET({
+        headers: new Headers({ "cf-ipcountry": "US", "x-real-ip": "172.64.1.1" }),
+        cookies: { get: vi.fn().mockReturnValue(undefined) },
+      } as never);
+      await expect(fromCloudflare.json()).resolves.toMatchObject({
+        data: { countryCode: "US", currency: "USD", geoHeaderPresent: true, platformTrusted: true },
+      });
+
+      const spoofedDirectHit = await GET({
+        headers: new Headers({ "cf-ipcountry": "US", "x-real-ip": "1.2.3.4" }),
+        cookies: { get: vi.fn().mockReturnValue(undefined) },
+      } as never);
+      await expect(spoofedDirectHit.json()).resolves.toMatchObject({
+        data: { countryCode: "BD", currency: "BDT", geoHeaderPresent: true, platformTrusted: false },
+      });
+    } finally {
+      if (previous === undefined) delete process.env.TRUST_CLOUDFLARE_GEO;
+      else process.env.TRUST_CLOUDFLARE_GEO = previous;
+    }
+  });
+
   it("saves a supported manual currency", async () => {
     const response = await POST(request({ currency: "USD" }));
 

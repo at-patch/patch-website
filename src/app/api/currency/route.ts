@@ -9,7 +9,9 @@ import {
 } from "@/lib/currency";
 
 export async function GET(request: NextRequest) {
-  const countryCode = detectCountryFromHeaders(request.headers);
+  const connectingIp = request.headers.get("x-real-ip");
+  const platformTrusted = isTrustedGeoPlatform(connectingIp);
+  const countryCode = detectCountryFromHeaders(request.headers, platformTrusted);
   const manualCurrency = request.cookies.get(CURRENCY_COOKIE)?.value;
   const currency = isSupportedCurrency(manualCurrency)
     ? manualCurrency
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
       manualOverride: isSupportedCurrency(manualCurrency),
       geoHeaderPresent:
         request.headers.has("x-vercel-ip-country") || request.headers.has("cf-ipcountry"),
-      platformTrusted: isTrustedGeoPlatform(),
+      platformTrusted,
     },
   });
 }

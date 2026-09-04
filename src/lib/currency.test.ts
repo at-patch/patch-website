@@ -33,6 +33,22 @@ describe("currency selection and conversion", () => {
     expect(detectCountryFromHeaders(headers, false)).toBe("BD");
   });
 
+  it("only trusts Cloudflare's header when the connecting peer is actually a Cloudflare IP", () => {
+    const previous = process.env.TRUST_CLOUDFLARE_GEO;
+    process.env.TRUST_CLOUDFLARE_GEO = "1";
+    try {
+      // 172.64.0.0/13 is a published Cloudflare range.
+      expect(isTrustedGeoPlatform("172.64.1.1")).toBe(true);
+      // An arbitrary IP is not — someone hitting the origin directly.
+      expect(isTrustedGeoPlatform("1.2.3.4")).toBe(false);
+      expect(isTrustedGeoPlatform(null)).toBe(false);
+      expect(isTrustedGeoPlatform(undefined)).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.TRUST_CLOUDFLARE_GEO;
+      else process.env.TRUST_CLOUDFLARE_GEO = previous;
+    }
+  });
+
   it("prefers the Vercel header over Cloudflare's when both are present", () => {
     const headers = new Headers({ "x-vercel-ip-country": "GB", "cf-ipcountry": "US" });
     expect(detectCountryFromHeaders(headers, true)).toBe("GB");
@@ -57,7 +73,8 @@ describe("currency selection and conversion", () => {
 
       setEnv("VERCEL");
       setEnv("TRUST_CLOUDFLARE_GEO", "1");
-      expect(isTrustedGeoPlatform()).toBe(true);
+      expect(isTrustedGeoPlatform("172.64.1.1")).toBe(true);
+      expect(isTrustedGeoPlatform("1.2.3.4")).toBe(false);
     } finally {
       setEnv("VERCEL", previous.VERCEL);
       setEnv("TRUST_CLOUDFLARE_GEO", previous.TRUST_CLOUDFLARE_GEO);
