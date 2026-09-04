@@ -6,6 +6,7 @@ import {
   formatMoney,
   getCurrencySnapshot,
   isSupportedCurrency,
+  isTrustedGeoPlatform,
 } from "./currency";
 
 describe("currency selection and conversion", () => {
@@ -24,6 +25,43 @@ describe("currency selection and conversion", () => {
     const headers = new Headers({ "x-vercel-ip-country": "US" });
     expect(detectCountryFromHeaders(headers, true)).toBe("US");
     expect(detectCountryFromHeaders(headers, false)).toBe("BD");
+  });
+
+  it("reads the Cloudflare country header only when trusted", () => {
+    const headers = new Headers({ "cf-ipcountry": "US" });
+    expect(detectCountryFromHeaders(headers, true)).toBe("US");
+    expect(detectCountryFromHeaders(headers, false)).toBe("BD");
+  });
+
+  it("prefers the Vercel header over Cloudflare's when both are present", () => {
+    const headers = new Headers({ "x-vercel-ip-country": "GB", "cf-ipcountry": "US" });
+    expect(detectCountryFromHeaders(headers, true)).toBe("GB");
+  });
+
+  it("trusts geo headers on Vercel or when Cloudflare trust is explicitly enabled", () => {
+    // Assigning undefined to process.env coerces to the string "undefined",
+    // so set/unset these explicitly with delete.
+    const previous = { VERCEL: process.env.VERCEL, TRUST_CLOUDFLARE_GEO: process.env.TRUST_CLOUDFLARE_GEO };
+    const setEnv = (key: keyof typeof previous, value?: string) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    };
+
+    try {
+      setEnv("VERCEL");
+      setEnv("TRUST_CLOUDFLARE_GEO");
+      expect(isTrustedGeoPlatform()).toBe(false);
+
+      setEnv("VERCEL", "1");
+      expect(isTrustedGeoPlatform()).toBe(true);
+
+      setEnv("VERCEL");
+      setEnv("TRUST_CLOUDFLARE_GEO", "1");
+      expect(isTrustedGeoPlatform()).toBe(true);
+    } finally {
+      setEnv("VERCEL", previous.VERCEL);
+      setEnv("TRUST_CLOUDFLARE_GEO", previous.TRUST_CLOUDFLARE_GEO);
+    }
   });
 
   it("rounds converted amounts to currency minor units", () => {

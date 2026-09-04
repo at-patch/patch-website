@@ -5,6 +5,7 @@ import {
   detectCountryFromHeaders,
   getCurrencySnapshot,
   isSupportedCurrency,
+  isTrustedGeoPlatform,
 } from "@/lib/currency";
 
 export async function GET(request: NextRequest) {
@@ -20,8 +21,9 @@ export async function GET(request: NextRequest) {
       countryCode,
       currency,
       manualOverride: isSupportedCurrency(manualCurrency),
-      geoHeaderPresent: request.headers.has("x-vercel-ip-country"),
-      platformTrusted: process.env.VERCEL === "1",
+      geoHeaderPresent:
+        request.headers.has("x-vercel-ip-country") || request.headers.has("cf-ipcountry"),
+      platformTrusted: isTrustedGeoPlatform(),
     },
   });
 }

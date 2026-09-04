@@ -41,9 +41,19 @@ export function currencyForCountry(countryCode?: string | null): SupportedCurren
   return "BDT";
 }
 
-export function detectCountryFromHeaders(headers: Headers, trustedPlatform = process.env.VERCEL === "1") {
+// Vercel injects VERCEL=1 itself, so x-vercel-ip-country can only be set by
+// their edge network. Hostinger has no such platform signal — TRUST_CLOUDFLARE_GEO
+// must be set manually, and only after the origin is locked down to Cloudflare's
+// IP ranges (or Authenticated Origin Pulls), since anyone hitting the origin
+// directly could otherwise spoof cf-ipcountry.
+export function isTrustedGeoPlatform() {
+  return process.env.VERCEL === "1" || process.env.TRUST_CLOUDFLARE_GEO === "1";
+}
+
+export function detectCountryFromHeaders(headers: Headers, trustedPlatform = isTrustedGeoPlatform()) {
   if (!trustedPlatform) return process.env.DEFAULT_COUNTRY_CODE?.toUpperCase() || "BD";
-  return headers.get("x-vercel-ip-country")?.toUpperCase() || "BD";
+  const country = headers.get("x-vercel-ip-country") || headers.get("cf-ipcountry");
+  return country?.toUpperCase() || "BD";
 }
 
 export function convertFromBase(amount: number, rate: number) {
