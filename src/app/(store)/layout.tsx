@@ -6,17 +6,17 @@ import { Header } from "@/components/store/Header";
 import {
   CURRENCY_COOKIE,
   currencyForCountry,
-  detectCountryFromHeaders,
   getCurrencySnapshot,
   isSupportedCurrency,
 } from "@/lib/currency";
+import { detectCountry } from "@/lib/geoip";
 
 export default async function StoreLayout({ children }: { children: React.ReactNode }) {
   const [requestCookies, requestHeaders] = await Promise.all([cookies(), headers()]);
   const manualCurrency = requestCookies.get(CURRENCY_COOKIE)?.value;
   const requestedCurrency = isSupportedCurrency(manualCurrency)
     ? manualCurrency
-    : currencyForCountry(detectCountryFromHeaders(requestHeaders));
+    : currencyForCountry(await detectCountry(requestHeaders));
   const snapshot = await getCurrencySnapshot(requestedCurrency);
 
   return (

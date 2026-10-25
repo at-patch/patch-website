@@ -2,16 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   CURRENCY_COOKIE,
   currencyForCountry,
-  detectCountryFromHeaders,
   getCurrencySnapshot,
   isSupportedCurrency,
   isTrustedGeoPlatform,
 } from "@/lib/currency";
+import { detectCountry } from "@/lib/geoip";
 
 export async function GET(request: NextRequest) {
   const connectingIp = request.headers.get("x-real-ip");
   const platformTrusted = isTrustedGeoPlatform(connectingIp);
-  const countryCode = detectCountryFromHeaders(request.headers, platformTrusted);
+  const countryCode = await detectCountry(request.headers);
   const manualCurrency = request.cookies.get(CURRENCY_COOKIE)?.value;
   const currency = isSupportedCurrency(manualCurrency)
     ? manualCurrency
