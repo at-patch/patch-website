@@ -21,7 +21,7 @@ export function CurrencySelector() {
           setUpdating(false);
         }
       }}
-      className="rounded-lg border border-patch-line bg-transparent px-2 py-1.5 text-xs font-semibold text-patch-ink outline-none disabled:opacity-50"
+      className="rounded-lg border border-patch-line bg-transparent px-1.5 py-1 text-[11px] font-semibold text-patch-ink outline-none disabled:opacity-50 sm:px-2 sm:py-1.5 sm:text-xs"
     >
       {SUPPORTED_CURRENCIES.map((code) => (
         <option key={code} value={code} className="bg-patch-bg">

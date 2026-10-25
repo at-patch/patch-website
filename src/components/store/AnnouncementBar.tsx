@@ -20,7 +20,7 @@ export function AnnouncementBar() {
   }, []);
 
   return (
-    <div className="bg-patch-accent py-2 text-center text-xs font-semibold uppercase tracking-[0.15em] text-patch-accent-ink">
+    <div className="bg-patch-accent px-4 py-2 text-center text-[11px] font-semibold uppercase leading-snug tracking-[0.12em] text-patch-accent-ink sm:px-0 sm:text-xs sm:tracking-[0.15em]">
       {MESSAGES[index]}
     </div>
   );
